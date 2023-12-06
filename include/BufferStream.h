@@ -21,11 +21,12 @@ public:
 
 	void seek(std::size_t offset, std::ios::seekdir offsetFrom = std::ios::beg);
 
-	void skip(std::size_t offset);
-
-	template<detail::PODType T, std::size_t N = 1>
-	void skip() {
-		this->skip(sizeof(T) * N);
+	template<detail::PODType T = std::byte>
+	void skip(std::size_t n = 1) {
+		if (!n) {
+			return;
+		}
+		this->seek(sizeof(T) * n, std::ios::cur);
 	}
 
 	[[nodiscard]] std::size_t tell() const;
@@ -105,6 +106,8 @@ public:
 		for (int i = 0; i < n; i++) {
 			char temp = this->read<char>();
 			if (temp == '\0' && stopOnNullTerminator) {
+				// Read the required number of characters and exit
+				this->skip<char>(n - i - 1);
 				break;
 			}
 			obj += temp;

@@ -15,10 +15,6 @@ void BufferStream::seek(std::size_t offset, std::ios::seekdir offsetFrom) {
 		this->streamPos = this->streamLen + offset;
 }
 
-void BufferStream::skip(std::size_t offset) {
-	this->seek(offset, std::ios::cur);
-}
-
 std::size_t BufferStream::tell() const {
 	return this->streamPos;
 }
