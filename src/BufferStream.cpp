@@ -8,17 +8,17 @@ BufferStream::BufferStream(const std::byte* buffer, std::size_t bufferLength, bo
 
 void BufferStream::seek(std::size_t offset, std::ios::seekdir offsetFrom) {
 	if (offsetFrom == std::ios::beg) {
-		if (this->useExceptions && offsetFrom > this->streamLen) {
+		if (this->useExceptions && offset > this->streamLen) {
 			throw std::out_of_range{detail::OUT_OF_RANGE_ERROR_MESSAGE};
 		}
 		this->streamPos = offset;
 	} else if (offsetFrom == std::ios::cur) {
-		if (this->useExceptions && this->streamPos + offsetFrom > this->streamLen) {
+		if (this->useExceptions && this->streamPos + offset > this->streamLen) {
 			throw std::out_of_range{detail::OUT_OF_RANGE_ERROR_MESSAGE};
 		}
 		this->streamPos += offset;
 	} else if (offsetFrom == std::ios::end) {
-		if (this->useExceptions && offsetFrom > this->streamLen) {
+		if (this->useExceptions && offset > this->streamLen) {
 			throw std::out_of_range{detail::OUT_OF_RANGE_ERROR_MESSAGE};
 		}
 		this->streamPos = this->streamLen - offset;
