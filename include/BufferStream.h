@@ -34,6 +34,8 @@ public:
 
 	[[nodiscard]] std::size_t tell() const;
 
+	[[nodiscard]] std::size_t size() const;
+
 	[[nodiscard]] std::byte peek(long offset = 0);
 
 	template<detail::PODType T>

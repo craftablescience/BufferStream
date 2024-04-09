@@ -29,6 +29,10 @@ std::size_t BufferStream::tell() const {
 	return this->streamPos;
 }
 
+std::size_t BufferStream::size() const {
+	return this->streamLen;
+}
+
 std::byte BufferStream::peek(long offset) {
 	if (this->useExceptions && offset > this->streamLen - this->streamPos) {
 		throw std::out_of_range{detail::OUT_OF_RANGE_ERROR_MESSAGE};
