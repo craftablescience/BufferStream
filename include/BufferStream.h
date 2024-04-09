@@ -4,11 +4,14 @@
 #include <cstddef>
 #include <cstdint>
 #include <ios>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <vector>
 
 namespace detail {
+
+constexpr const char* OUT_OF_RANGE_ERROR_MESSAGE = "Out of range!";
 
 template<typename T>
 concept PODType = std::is_trivial_v<T> && std::is_standard_layout_v<T>;
@@ -17,7 +20,7 @@ concept PODType = std::is_trivial_v<T> && std::is_standard_layout_v<T>;
 
 class BufferStream {
 public:
-	BufferStream(const std::byte* buffer, std::size_t bufferLength);
+	BufferStream(const std::byte* buffer, std::size_t bufferLength, bool useExceptions_ = true);
 
 	void seek(std::size_t offset, std::ios::seekdir offsetFrom = std::ios::beg);
 
@@ -42,6 +45,10 @@ public:
 
 	template<std::size_t L>
 	[[nodiscard]] std::array<std::byte, L> read_bytes() {
+		if (this->useExceptions && this->streamPos + L > this->streamLen) {
+			throw std::out_of_range{detail::OUT_OF_RANGE_ERROR_MESSAGE};
+		}
+
 		std::array<std::byte, L> out;
 		for (int i = 0; i < L; i++, this->streamPos++) {
 			out[i] = this->streamBuffer[this->streamPos];
@@ -57,6 +64,10 @@ public:
 
 	template<detail::PODType T>
 	void read(T& obj) {
+		if (this->useExceptions && this->streamPos + sizeof(T) > this->streamLen) {
+			throw std::out_of_range{detail::OUT_OF_RANGE_ERROR_MESSAGE};
+		}
+
 		for (int i = 0; i < sizeof(T); i++, this->streamPos++) {
 			reinterpret_cast<std::byte*>(&obj)[i] = this->streamBuffer[this->streamPos];
 		}
@@ -64,6 +75,10 @@ public:
 
 	template<detail::PODType T, std::size_t N>
 	void read(T(&obj)[N]) {
+		if (this->useExceptions && this->streamPos + sizeof(T) * N > this->streamLen) {
+			throw std::out_of_range{detail::OUT_OF_RANGE_ERROR_MESSAGE};
+		}
+
 		for (int i = 0; i < sizeof(T) * N; i++, this->streamPos++) {
 			reinterpret_cast<std::byte*>(&obj)[i] = this->streamBuffer[this->streamPos];
 		}
@@ -118,4 +133,5 @@ protected:
 	const std::byte* streamBuffer;
 	std::size_t streamLen;
 	std::size_t streamPos;
+	bool useExceptions;
 };
