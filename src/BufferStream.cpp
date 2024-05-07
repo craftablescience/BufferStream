@@ -6,7 +6,7 @@ BufferStream::BufferStream(const std::byte* buffer, std::size_t bufferLength, bo
 		, streamPos(0)
 		, useExceptions(useExceptions_) {}
 
-void BufferStream::seek(std::size_t offset, std::ios::seekdir offsetFrom) {
+BufferStream& BufferStream::seek(std::size_t offset, std::ios::seekdir offsetFrom) {
 	if (offsetFrom == std::ios::beg) {
 		if (this->useExceptions && offset > this->streamLen) {
 			throw std::out_of_range{detail::OUT_OF_RANGE_ERROR_MESSAGE};
@@ -23,6 +23,7 @@ void BufferStream::seek(std::size_t offset, std::ios::seekdir offsetFrom) {
 		}
 		this->streamPos = this->streamLen - offset;
 	}
+	return *this;
 }
 
 std::size_t BufferStream::tell() const {
