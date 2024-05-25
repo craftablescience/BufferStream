@@ -102,61 +102,6 @@ public:
 	}
 
 	template<BufferStreamPODType T>
-	[[nodiscard]] T read() {
-		T obj{};
-		this->read(obj);
-		return obj;
-	}
-
-	template<BufferStreamPODType T, std::size_t L>
-	[[nodiscard]] std::array<T, L> read_bytes() {
-		const std::size_t realLen = sizeof(T) * L;
-		if (this->useExceptions && this->bufferPos + realLen > this->bufferLen) {
-			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
-		}
-
-		std::array<T, L> out;
-		std::memcpy(out.data(), this->buffer + bufferPos, realLen);
-		this->bufferPos += realLen;
-		return out;
-	}
-
-	template<std::size_t L>
-	[[nodiscard]] std::array<std::byte, L> read_bytes() {
-		return this->read_bytes<std::byte, L>();
-	}
-
-	template<BufferStreamPODType T>
-	[[nodiscard]] std::vector<T> read_bytes(std::size_t length) {
-		const std::size_t realLen = sizeof(T) * length;
-		if (this->useExceptions && this->bufferPos + realLen > this->bufferLen) {
-			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
-		}
-
-		std::vector<T> out;
-		out.resize(length);
-		std::memcpy(out.data(), this->buffer + bufferPos, realLen);
-		this->bufferPos += realLen;
-		return out;
-	}
-
-	[[nodiscard]] std::vector<std::byte> read_bytes(std::size_t length) {
-		return this->read_bytes<std::byte>(length);
-	}
-
-	[[nodiscard]] std::string read_string() {
-		std::string out;
-		this->read(out);
-		return out;
-	}
-
-	[[nodiscard]] std::string read_string(std::size_t n, bool stopOnNullTerminator = true) {
-		std::string out;
-		this->read(out, n, stopOnNullTerminator);
-		return out;
-	}
-
-	template<BufferStreamPODType T>
 	BufferStream& read(T& obj) {
 		if (this->useExceptions && this->bufferPos + sizeof(T) > this->bufferLen) {
 			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
@@ -243,7 +188,8 @@ public:
 
 	template<BufferStreamNonContiguousResizableContainer T>
 	BufferStream& operator>>(T& obj) {
-		return this->read(obj);
+		obj.push_back(this->read<typename T::value_type>());
+		return *this;
 	}
 
 	BufferStream& read(std::string& obj) {
@@ -277,6 +223,75 @@ public:
 			obj += temp;
 		}
 		return *this;
+	}
+
+	template<BufferStreamPODType T>
+	[[nodiscard]] T read() {
+		T obj{};
+		this->read(obj);
+		return obj;
+	}
+
+	template<BufferStreamPODType T, std::size_t N>
+	std::array<T, N> read() {
+		std::array<T, N> obj{};
+		this->read(obj);
+		return obj;
+	}
+
+	template<BufferStreamNonContiguousResizableContainer T>
+	T read(std::size_t n) {
+		T obj{};
+		this->read(obj, n);
+		return obj;
+	}
+
+	template<BufferStreamPODType T, std::size_t L>
+	[[nodiscard]] std::array<T, L> read_bytes() {
+		const std::size_t realLen = sizeof(T) * L;
+		if (this->useExceptions && this->bufferPos + realLen > this->bufferLen) {
+			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
+		}
+
+		std::array<T, L> out;
+		std::memcpy(out.data(), this->buffer + bufferPos, realLen);
+		this->bufferPos += realLen;
+		return out;
+	}
+
+	template<std::size_t L>
+	[[nodiscard]] std::array<std::byte, L> read_bytes() {
+		return this->read_bytes<std::byte, L>();
+	}
+
+	template<BufferStreamPODType T>
+	[[nodiscard]] std::vector<T> read_bytes(std::size_t length) {
+		const std::size_t realLen = sizeof(T) * length;
+		if (this->useExceptions && this->bufferPos + realLen > this->bufferLen) {
+			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
+		}
+
+		std::vector<T> out;
+		out.resize(length);
+		std::memcpy(out.data(), this->buffer + bufferPos, realLen);
+		this->bufferPos += realLen;
+		return out;
+	}
+
+	[[nodiscard]] std::vector<std::byte> read_bytes(std::size_t length) {
+		return this->read_bytes<std::byte>(length);
+	}
+
+	[[nodiscard]] std::string read_string() {
+		std::string out;
+		this->read(out);
+		return out;
+	}
+
+	[[nodiscard]] std::string read_string(std::size_t n, bool stopOnNullTerminator = true) {
+		std::string out;
+		this->read(out, n, stopOnNullTerminator);
+		return out;
 	}
 
 protected:
