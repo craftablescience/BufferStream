@@ -22,19 +22,24 @@ concept BufferStreamPODType = std::is_trivial_v<T> && std::is_standard_layout_v<
 class BufferStream {
 public:
 	template<BufferStreamByteType T>
-	BufferStream(const T* buffer, std::size_t bufferLen, bool useExceptions = true)
+	BufferStream(const T* buffer, std::size_t bufferLen)
 			: buffer(reinterpret_cast<const std::byte*>(buffer))
 			, bufferLen(bufferLen)
 			, bufferPos(0)
-			, useExceptions(useExceptions) {}
+			, useExceptions(true) {}
 
 	template<typename T>
 	requires BufferStreamByteType<typename T::value_type> && requires(T& t) {
 		{t.data()} -> std::same_as<typename T::value_type*>;
 		{t.size()} -> std::convertible_to<std::size_t>;
 	}
-	explicit BufferStream(T& buffer, bool useExceptions = true)
-			: BufferStream(buffer.data(), buffer.size(), useExceptions) {}
+	explicit BufferStream(T& buffer)
+			: BufferStream(buffer.data(), buffer.size()) {}
+
+	BufferStream& setExceptionsEnabled(bool exceptions) {
+		this->useExceptions = exceptions;
+		return *this;
+	}
 
 	BufferStream& seek(std::size_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		if (offsetFrom == std::ios::beg) {
