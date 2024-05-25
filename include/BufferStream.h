@@ -77,7 +77,7 @@ public:
 		return this->bufferLen;
 	}
 
-	[[nodiscard]] std::byte peek(long offset = 0) const {
+	[[nodiscard]] std::byte peek(long offset = 1) const {
 		if (this->useExceptions && offset > this->bufferLen - this->bufferPos) {
 			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
 		}
