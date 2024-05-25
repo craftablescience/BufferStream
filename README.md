@@ -77,7 +77,7 @@ std::string str_null_terms = stream.read_string(12, false);
 std::string str_ref;
 stream.read(str_ref, 12);
 
-// Equivalent to stream.read_string()
+// Equivalent to stream.read(str_ref)
 stream >> str_ref;
 ```
 
