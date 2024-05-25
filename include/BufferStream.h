@@ -18,7 +18,7 @@ concept BufferStreamPODType = std::is_trivial_v<T> && std::is_standard_layout_v<
 /// STL container types that can hold POD type values but can't be used as buffer storage.
 /// Guarantees std::begin(T), std::end(T), and T::size() are defined. T must also hold a POD type.
 template<typename T>
-concept BufferStreamNonContiguousContainer = BufferStreamPODType<typename T::value_type> && requires(T& t) {
+concept BufferStreamPossiblyNonContiguousContainer = BufferStreamPODType<typename T::value_type> && requires(T& t) {
 	{std::begin(t)} -> std::same_as<typename T::iterator>;
 	{std::end(t)} -> std::same_as<typename T::iterator>;
 	{t.size()} -> std::convertible_to<std::size_t>;
@@ -27,14 +27,14 @@ concept BufferStreamNonContiguousContainer = BufferStreamPODType<typename T::val
 /// STL container types that can hold POD type values and be used as buffer storage.
 /// Guarantees T::data() is defined, on top of BufferStreamNonContiguousContainer.
 template<typename T>
-concept BufferStreamContiguousContainer = BufferStreamNonContiguousContainer<T> && requires(T& t) {
+concept BufferStreamContiguousContainer = BufferStreamPossiblyNonContiguousContainer<T> && requires(T& t) {
 	{t.data()} -> std::same_as<typename T::value_type*>;
 };
 
 /// STL container types that can hold POD type values but can't be used as buffer storage.
 /// Guarantees T::clear() and T::push_back(T::value_type) are defined, on top of BufferStreamNonContiguousContainer.
 template<typename T>
-concept BufferStreamNonContiguousResizableContainer = BufferStreamNonContiguousContainer<T> && requires(T& t) {
+concept BufferStreamPossiblyNonContiguousResizableContainer = BufferStreamPossiblyNonContiguousContainer<T> && requires(T& t) {
 	{t.clear()} -> std::same_as<void>;
 	{t.push_back(typename T::value_type{})} -> std::same_as<void>;
 };
@@ -44,13 +44,21 @@ public:
 	template<BufferStreamPODType T>
 	BufferStream(const T* buffer, std::size_t bufferLen)
 			: buffer(reinterpret_cast<const std::byte*>(buffer))
-			, bufferLen(bufferLen)
+			, bufferLen(sizeof(T) * bufferLen)
 			, bufferPos(0)
 			, useExceptions(true) {}
 
+	template<BufferStreamPODType T, std::size_t N>
+	explicit BufferStream(T(&buffer)[N])
+			: BufferStream(buffer, sizeof(T) * N) {}
+
+	template<BufferStreamPODType T, std::size_t M, std::size_t N>
+	explicit BufferStream(T(&buffer)[M][N])
+			: BufferStream(buffer, sizeof(T) * M * N) {}
+
 	template<BufferStreamContiguousContainer T>
 	explicit BufferStream(T& buffer)
-			: BufferStream(buffer.data(), buffer.size()) {}
+			: BufferStream(buffer.data(), sizeof(typename T::value_type) * buffer.size()) {}
 
 	BufferStream& setExceptionsEnabled(bool exceptions) {
 		this->useExceptions = exceptions;
@@ -124,7 +132,7 @@ public:
 			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
 		}
 
-		for (int i = 0; i < N; i++, this->bufferPos += sizeof(T)) {
+		for (int i = 0; i < N; i++) {
 			this->read(obj[i]);
 		}
 		return *this;
@@ -142,7 +150,7 @@ public:
 		}
 
 		for (int i = 0; i < M; i++) {
-			for (int j = 0; j < N; j++, this->bufferPos += sizeof(T)) {
+			for (int j = 0; j < N; j++) {
 				this->read(obj[i][j]);
 			}
 		}
@@ -167,7 +175,7 @@ public:
 		return this->read(obj);
 	}
 
-	template<BufferStreamNonContiguousResizableContainer T>
+	template<BufferStreamPossiblyNonContiguousResizableContainer T>
 	BufferStream& read(T& obj, std::size_t n) {
 		obj.clear();
 		if (!n) {
@@ -181,12 +189,12 @@ public:
 			obj.reserve(n);
 		}
 		for (int i = 0; i < n; i++) {
-			obj.push_back(this->read<T>());
+			obj.push_back(this->read<typename T::value_type>());
 		}
 		return *this;
 	}
 
-	template<BufferStreamNonContiguousResizableContainer T>
+	template<BufferStreamPossiblyNonContiguousResizableContainer T>
 	BufferStream& operator>>(T& obj) {
 		obj.push_back(this->read<typename T::value_type>());
 		return *this;
@@ -239,7 +247,7 @@ public:
 		return obj;
 	}
 
-	template<BufferStreamNonContiguousResizableContainer T>
+	template<BufferStreamPossiblyNonContiguousResizableContainer T>
 	T read(std::size_t n) {
 		T obj{};
 		this->read(obj, n);
