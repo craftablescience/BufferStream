@@ -1,5 +1,5 @@
 # BufferStream
-A C++20 library to quickly read objects from a buffer.
+A header-only C++20 library to quickly read objects from a buffer.
 
 ## Usage
 
