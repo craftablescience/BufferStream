@@ -147,6 +147,11 @@ public:
 		return *this;
 	}
 
+	template<BufferStreamPODType T>
+	BufferStream& operator>>(T& obj) {
+		return this->read(obj);
+	}
+
 	template<BufferStreamPODType T, std::size_t N>
 	BufferStream& read(T(&obj)[N]) {
 		if (this->useExceptions && this->bufferPos + sizeof(T) * N > this->bufferLen) {
@@ -157,6 +162,11 @@ public:
 			this->read(obj[i]);
 		}
 		return *this;
+	}
+
+	template<BufferStreamPODType T, std::size_t N>
+	BufferStream& operator>>(T(&obj)[N]) {
+		return this->read(obj);
 	}
 
 	template<BufferStreamPODType T, std::size_t M, std::size_t N>
@@ -173,12 +183,22 @@ public:
 		return *this;
 	}
 
+	template<BufferStreamPODType T, std::size_t M, std::size_t N>
+	BufferStream& operator>>(T(&obj)[M][N]) {
+		return this->read(obj);
+	}
+
 	template<BufferStreamPODType T, std::size_t N>
 	BufferStream& read(std::array<T, N>& obj) {
 		for (int i = 0; i < N; i++) {
 			obj[i] = this->read<T>();
 		}
 		return *this;
+	}
+
+	template<BufferStreamPODType T, std::size_t N>
+	BufferStream& operator>>(std::array<T, N>& obj) {
+		return this->read(obj);
 	}
 
 	template<BufferStreamPODType T>
@@ -195,6 +215,11 @@ public:
 		return *this;
 	}
 
+	template<BufferStreamPODType T>
+	BufferStream& operator>>(std::vector<T>& obj) {
+		return this->read(obj);
+	}
+
 	BufferStream& read(std::string& obj) {
 		obj.clear();
 		char temp = this->read<char>();
@@ -203,6 +228,10 @@ public:
 			temp = this->read<char>();
 		}
 		return *this;
+	}
+
+	BufferStream& operator>>(std::string& obj) {
+		return this->read(obj);
 	}
 
 	BufferStream& read(std::string& obj, std::size_t n, bool stopOnNullTerminator = true) {
