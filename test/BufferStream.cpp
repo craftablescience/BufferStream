@@ -47,6 +47,23 @@ TEST(BufferStream, open) {
 	}
 }
 
+TEST(BufferStream, big_endian) {
+	{
+		std::byte x{0xAB};
+		BufferStream stream{&x, sizeof(x)};
+
+		auto y = stream.setBigEndian(true).read<std::byte>();
+		EXPECT_EQ(y, std::byte{0xAB});
+	}
+	{
+		std::uint32_t x = 0xAB'CD'EF'00;
+		BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
+
+		auto y = stream.setBigEndian(true).read<std::uint32_t>();
+		EXPECT_EQ(y, 0x00'EF'CD'AB);
+	}
+}
+
 TEST(BufferStream, seek) {
 	std::vector<unsigned char> buffer{{}};
 	BufferStream stream{buffer};

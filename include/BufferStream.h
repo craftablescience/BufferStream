@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <bit>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>
@@ -46,7 +47,8 @@ public:
 			: buffer(reinterpret_cast<const std::byte*>(buffer))
 			, bufferLen(sizeof(T) * bufferLen)
 			, bufferPos(0)
-			, useExceptions(true) {}
+			, useExceptions(true)
+			, bigEndian(false) {}
 
 	template<BufferStreamPODType T, std::size_t N>
 	explicit BufferStream(T(&buffer)[N])
@@ -62,6 +64,11 @@ public:
 
 	BufferStream& setExceptionsEnabled(bool exceptions) {
 		this->useExceptions = exceptions;
+		return *this;
+	}
+
+	BufferStream& setBigEndian(bool readBigEndian) {
+		this->bigEndian = readBigEndian;
 		return *this;
 	}
 
@@ -115,7 +122,31 @@ public:
 			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
 		}
 
-		std::memcpy(&obj, this->buffer + this->bufferPos, sizeof(T));
+		static constexpr auto swapEndian = [](T& t) {
+			union {
+				T t;
+				std::byte bytes[sizeof(T)];
+			} source{}, dest{};
+			source.t = t;
+			for (size_t k = 0; k < sizeof(T); k++) {
+				dest.bytes[k] = source.bytes[sizeof(T) - k - 1];
+			}
+			t = dest.t;
+		};
+
+		if constexpr (std::endian::native == std::endian::little) {
+			std::memcpy(&obj, this->buffer + this->bufferPos, sizeof(T));
+			if (this->bigEndian) {
+				swapEndian(obj);
+			}
+		} else if constexpr (std::endian::native == std::endian::big) {
+			std::memcpy(&obj, this->buffer + this->bufferPos, sizeof(T));
+			if (!this->bigEndian) {
+				swapEndian(obj);
+			}
+		} else {
+			static_assert("Need to investigate what the proper endianness of this platform is!");
+		}
 		this->bufferPos += sizeof(T);
 
 		return *this;
@@ -282,6 +313,7 @@ protected:
 	std::size_t bufferLen;
 	std::size_t bufferPos;
 	bool useExceptions;
+	bool bigEndian;
 
 	static inline constexpr const char* OUT_OF_RANGE_ERROR_MESSAGE = "Out of range!";
 };
