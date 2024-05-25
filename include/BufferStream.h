@@ -75,17 +75,17 @@ public:
 	BufferStream& seek(std::size_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		if (offsetFrom == std::ios::beg) {
 			if (this->useExceptions && offset > this->bufferLen) {
-				throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
+				throw std::overflow_error{OVERFLOW_ERROR_MESSAGE};
 			}
 			this->bufferPos = offset;
 		} else if (offsetFrom == std::ios::cur) {
 			if (this->useExceptions && this->bufferPos + offset > this->bufferLen) {
-				throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
+				throw std::overflow_error{OVERFLOW_ERROR_MESSAGE};
 			}
 			this->bufferPos += offset;
 		} else if (offsetFrom == std::ios::end) {
 			if (this->useExceptions && offset > this->bufferLen) {
-				throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
+				throw std::overflow_error{OVERFLOW_ERROR_MESSAGE};
 			}
 			this->bufferPos = this->bufferLen - offset;
 		}
@@ -110,7 +110,7 @@ public:
 
 	[[nodiscard]] std::byte peek(long offset = 1) const {
 		if (this->useExceptions && offset > this->bufferLen - this->bufferPos) {
-			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
+			throw std::overflow_error{OVERFLOW_ERROR_MESSAGE};
 		}
 
 		return this->buffer[this->bufferPos + offset];
@@ -119,7 +119,7 @@ public:
 	template<BufferStreamPODType T>
 	BufferStream& read(T& obj) {
 		if (this->useExceptions && this->bufferPos + sizeof(T) > this->bufferLen) {
-			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
+			throw std::overflow_error{OVERFLOW_ERROR_MESSAGE};
 		}
 
 		static constexpr auto swapEndian = [](T& t) {
@@ -138,11 +138,19 @@ public:
 		if constexpr (sizeof(T) > 1) {
 			if constexpr (std::endian::native == std::endian::little) {
 				if (this->bigEndian) {
-					swapEndian(obj);
+					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
+						swapEndian(obj);
+					} else {
+						throw std::invalid_argument{BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
+					}
 				}
 			} else if constexpr (std::endian::native == std::endian::big) {
 				if (!this->bigEndian) {
-					swapEndian(obj);
+					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
+						swapEndian(obj);
+					} else {
+						throw std::invalid_argument{BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
+					}
 				}
 			} else {
 				static_assert("Need to investigate what the proper endianness of this platform is!");
@@ -161,7 +169,7 @@ public:
 	template<BufferStreamPODType T, std::size_t N>
 	BufferStream& read(T(&obj)[N]) {
 		if (this->useExceptions && this->bufferPos + sizeof(T) * N > this->bufferLen) {
-			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
+			throw std::overflow_error{OVERFLOW_ERROR_MESSAGE};
 		}
 
 		for (int i = 0; i < N; i++) {
@@ -178,7 +186,7 @@ public:
 	template<BufferStreamPODType T, std::size_t M, std::size_t N>
 	BufferStream& read(T(&obj)[M][N]) {
 		if (this->useExceptions && this->bufferPos + sizeof(T) * M * N > this->bufferLen) {
-			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
+			throw std::overflow_error{OVERFLOW_ERROR_MESSAGE};
 		}
 
 		for (int i = 0; i < M; i++) {
@@ -286,17 +294,6 @@ public:
 		return obj;
 	}
 
-	template<std::size_t L>
-	[[nodiscard]] std::array<std::byte, L> read_bytes() {
-		return this->read<std::array<std::byte, L>>();
-	}
-
-	[[nodiscard]] std::vector<std::byte> read_bytes(std::size_t length) {
-		std::vector<std::byte> out;
-		this->read(out, length);
-		return out;
-	}
-
 	[[nodiscard]] std::string read_string() {
 		std::string out;
 		this->read(out);
@@ -309,6 +306,17 @@ public:
 		return out;
 	}
 
+	template<std::size_t L>
+	[[nodiscard]] std::array<std::byte, L> read_bytes() {
+		return this->read<std::array<std::byte, L>>();
+	}
+
+	[[nodiscard]] std::vector<std::byte> read_bytes(std::size_t length) {
+		std::vector<std::byte> out;
+		this->read(out, length);
+		return out;
+	}
+
 protected:
 	const std::byte* buffer;
 	std::size_t bufferLen;
@@ -316,5 +324,6 @@ protected:
 	bool useExceptions;
 	bool bigEndian;
 
-	static inline constexpr const char* OUT_OF_RANGE_ERROR_MESSAGE = "Out of range!";
+	static inline constexpr const char* OVERFLOW_ERROR_MESSAGE = "Attempted to read value out of buffer bounds!";
+	static inline constexpr const char* BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE = "Cannot change endianness of complex types!";
 };

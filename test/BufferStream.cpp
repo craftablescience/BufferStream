@@ -74,7 +74,7 @@ TEST(BufferStream, seek) {
 	try {
 		stream.seek(2, std::ios::beg);
 		FAIL();
-	} catch (const std::out_of_range&) {}
+	} catch (const std::overflow_error&) {}
 
 	stream.seek(-1, std::ios::cur);
 	EXPECT_EQ(stream.tell(), 0);
@@ -82,7 +82,7 @@ TEST(BufferStream, seek) {
 	try {
 		stream.seek(-1, std::ios::cur);
 		FAIL();
-	} catch (const std::out_of_range&) {}
+	} catch (const std::overflow_error&) {}
 
 	stream.seek(1, std::ios::end);
 	EXPECT_EQ(stream.tell(), 0);
@@ -90,7 +90,7 @@ TEST(BufferStream, seek) {
 	try {
 		stream.seek(-2, std::ios::end);
 		FAIL();
-	} catch (const std::out_of_range&) {}
+	} catch (const std::overflow_error&) {}
 }
 
 TEST(BufferStream, skip) {
@@ -361,25 +361,6 @@ TEST(BufferStream, read_stl_container) {
 	}
 }
 
-TEST(BufferStream, read_bytes) {
-	int x = 10;
-	BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
-
-	{
-		std::array<std::byte, sizeof(x)> bytes = stream.read_bytes<sizeof(x)>();
-		EXPECT_EQ(bytes.size(), 4);
-		EXPECT_EQ(bytes.at(0), std::byte{10});
-	}
-	stream.seek(0);
-
-	{
-		std::vector<std::byte> bytes = stream.read_bytes(sizeof(x));
-		EXPECT_EQ(bytes.size(), 4);
-		EXPECT_EQ(bytes.at(0), std::byte{10});
-	}
-	stream.seek(0);
-}
-
 TEST(BufferStream, read_string) {
 	std::string buffer = "Hello world";
 	buffer.push_back('\0');
@@ -399,5 +380,24 @@ TEST(BufferStream, read_string) {
 
 	EXPECT_EQ(stream.read_string(13, false).size(), 13);
 	EXPECT_EQ(stream.tell(), 13);
+	stream.seek(0);
+}
+
+TEST(BufferStream, read_bytes) {
+	int x = 10;
+	BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
+
+	{
+		std::array<std::byte, sizeof(x)> bytes = stream.read_bytes<sizeof(x)>();
+		EXPECT_EQ(bytes.size(), 4);
+		EXPECT_EQ(bytes.at(0), std::byte{10});
+	}
+	stream.seek(0);
+
+	{
+		std::vector<std::byte> bytes = stream.read_bytes(sizeof(x));
+		EXPECT_EQ(bytes.size(), 4);
+		EXPECT_EQ(bytes.at(0), std::byte{10});
+	}
 	stream.seek(0);
 }
