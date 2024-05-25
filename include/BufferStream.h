@@ -134,18 +134,19 @@ public:
 			t = dest.t;
 		};
 
-		if constexpr (std::endian::native == std::endian::little) {
-			std::memcpy(&obj, this->buffer + this->bufferPos, sizeof(T));
-			if (this->bigEndian) {
-				swapEndian(obj);
+		std::memcpy(&obj, this->buffer + this->bufferPos, sizeof(T));
+		if constexpr (sizeof(T) > 1) {
+			if constexpr (std::endian::native == std::endian::little) {
+				if (this->bigEndian) {
+					swapEndian(obj);
+				}
+			} else if constexpr (std::endian::native == std::endian::big) {
+				if (!this->bigEndian) {
+					swapEndian(obj);
+				}
+			} else {
+				static_assert("Need to investigate what the proper endianness of this platform is!");
 			}
-		} else if constexpr (std::endian::native == std::endian::big) {
-			std::memcpy(&obj, this->buffer + this->bufferPos, sizeof(T));
-			if (!this->bigEndian) {
-				swapEndian(obj);
-			}
-		} else {
-			static_assert("Need to investigate what the proper endianness of this platform is!");
 		}
 		this->bufferPos += sizeof(T);
 
