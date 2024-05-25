@@ -11,28 +11,44 @@
 #include <type_traits>
 #include <vector>
 
-/// Valid byte types
-template<typename T>
-concept BufferStreamByteType = std::same_as<T, std::byte> || std::same_as<T, unsigned char> || std::same_as<T, char>;
-
-/// Only POD types are directly readable from the stream
+/// Only POD types are directly readable from the stream.
 template<typename T>
 concept BufferStreamPODType = std::is_trivial_v<T> && std::is_standard_layout_v<T>;
 
+/// STL container types that can hold POD type values but can't be used as buffer storage.
+/// Guarantees std::begin(T), std::end(T), and T::size() are defined. T must also hold a POD type.
+template<typename T>
+concept BufferStreamNonContiguousContainer = BufferStreamPODType<typename T::value_type> && requires(T& t) {
+	{std::begin(t)} -> std::same_as<typename T::iterator>;
+	{std::end(t)} -> std::same_as<typename T::iterator>;
+	{t.size()} -> std::convertible_to<std::size_t>;
+};
+
+/// STL container types that can hold POD type values and be used as buffer storage.
+/// Guarantees T::data() is defined, on top of BufferStreamNonContiguousContainer.
+template<typename T>
+concept BufferStreamContiguousContainer = BufferStreamNonContiguousContainer<T> && requires(T& t) {
+	{t.data()} -> std::same_as<typename T::value_type*>;
+};
+
+/// STL container types that can hold POD type values but can't be used as buffer storage.
+/// Guarantees T::clear() and T::push_back(T::value_type) are defined, on top of BufferStreamNonContiguousContainer.
+template<typename T>
+concept BufferStreamNonContiguousResizableContainer = BufferStreamNonContiguousContainer<T> && requires(T& t) {
+	{t.clear()} -> std::same_as<void>;
+	{t.push_back(typename T::value_type{})} -> std::same_as<void>;
+};
+
 class BufferStream {
 public:
-	template<BufferStreamByteType T>
+	template<BufferStreamPODType T>
 	BufferStream(const T* buffer, std::size_t bufferLen)
 			: buffer(reinterpret_cast<const std::byte*>(buffer))
 			, bufferLen(bufferLen)
 			, bufferPos(0)
 			, useExceptions(true) {}
 
-	template<typename T>
-	requires BufferStreamByteType<typename T::value_type> && requires(T& t) {
-		{t.data()} -> std::same_as<typename T::value_type*>;
-		{t.size()} -> std::convertible_to<std::size_t>;
-	}
+	template<BufferStreamContiguousContainer T>
 	explicit BufferStream(T& buffer)
 			: BufferStream(buffer.data(), buffer.size()) {}
 
@@ -92,15 +108,16 @@ public:
 		return obj;
 	}
 
-	template<BufferStreamByteType T, std::size_t L>
+	template<BufferStreamPODType T, std::size_t L>
 	[[nodiscard]] std::array<T, L> read_bytes() {
-		if (this->useExceptions && this->bufferPos + L > this->bufferLen) {
+		const std::size_t realLen = sizeof(T) * L;
+		if (this->useExceptions && this->bufferPos + realLen > this->bufferLen) {
 			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
 		}
 
 		std::array<T, L> out;
-		std::memcpy(out.data(), this->buffer + bufferPos, L);
-		this->bufferPos += L;
+		std::memcpy(out.data(), this->buffer + bufferPos, realLen);
+		this->bufferPos += realLen;
 		return out;
 	}
 
@@ -109,16 +126,17 @@ public:
 		return this->read_bytes<std::byte, L>();
 	}
 
-	template<BufferStreamByteType T>
+	template<BufferStreamPODType T>
 	[[nodiscard]] std::vector<T> read_bytes(std::size_t length) {
-		if (this->useExceptions && this->bufferPos + length > this->bufferLen) {
+		const std::size_t realLen = sizeof(T) * length;
+		if (this->useExceptions && this->bufferPos + realLen > this->bufferLen) {
 			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
 		}
 
 		std::vector<T> out;
 		out.resize(length);
-		std::memcpy(out.data(), this->buffer + bufferPos, length);
-		this->bufferPos += length;
+		std::memcpy(out.data(), this->buffer + bufferPos, realLen);
+		this->bufferPos += realLen;
 		return out;
 	}
 
@@ -204,22 +222,27 @@ public:
 		return this->read(obj);
 	}
 
-	template<BufferStreamPODType T>
-	BufferStream& read(std::vector<T>& obj, std::size_t n) {
+	template<BufferStreamNonContiguousResizableContainer T>
+	BufferStream& read(T& obj, std::size_t n) {
 		obj.clear();
 		if (!n) {
 			return *this;
 		}
 
-		obj.reserve(n);
+		// BufferStreamNonContiguousResizableContainer doesn't guarantee T::reserve(std::size_t) exists!
+		if constexpr (requires([[maybe_unused]] T& t) {
+			{t.reserve(1)} -> std::same_as<void>;
+		}) {
+			obj.reserve(n);
+		}
 		for (int i = 0; i < n; i++) {
 			obj.push_back(this->read<T>());
 		}
 		return *this;
 	}
 
-	template<BufferStreamPODType T>
-	BufferStream& operator>>(std::vector<T>& obj) {
+	template<BufferStreamNonContiguousResizableContainer T>
+	BufferStream& operator>>(T& obj) {
 		return this->read(obj);
 	}
 
