@@ -99,9 +99,8 @@ public:
 		}
 
 		std::array<T, L> out;
-		for (int i = 0; i < L; i++, this->bufferPos++) {
-			out[i] = this->buffer[this->bufferPos];
-		}
+		std::memcpy(out.data(), this->buffer + bufferPos, L);
+		this->bufferPos += L;
 		return out;
 	}
 
@@ -118,9 +117,8 @@ public:
 
 		std::vector<T> out;
 		out.resize(length);
-		for (int i = 0; i < length; i++, this->bufferPos++) {
-			out.push_back(this->buffer[this->bufferPos]);
-		}
+		std::memcpy(out.data(), this->buffer + bufferPos, length);
+		this->bufferPos += length;
 		return out;
 	}
 
