@@ -9,17 +9,17 @@ BufferStream::BufferStream(const std::byte* buffer, std::size_t bufferLength, bo
 BufferStream& BufferStream::seek(std::size_t offset, std::ios::seekdir offsetFrom) {
 	if (offsetFrom == std::ios::beg) {
 		if (this->useExceptions && offset > this->streamLen) {
-			throw std::out_of_range{detail::OUT_OF_RANGE_ERROR_MESSAGE};
+			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
 		}
 		this->streamPos = offset;
 	} else if (offsetFrom == std::ios::cur) {
 		if (this->useExceptions && this->streamPos + offset > this->streamLen) {
-			throw std::out_of_range{detail::OUT_OF_RANGE_ERROR_MESSAGE};
+			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
 		}
 		this->streamPos += offset;
 	} else if (offsetFrom == std::ios::end) {
 		if (this->useExceptions && offset > this->streamLen) {
-			throw std::out_of_range{detail::OUT_OF_RANGE_ERROR_MESSAGE};
+			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
 		}
 		this->streamPos = this->streamLen - offset;
 	}
@@ -36,7 +36,7 @@ std::size_t BufferStream::size() const {
 
 std::byte BufferStream::peek(long offset) {
 	if (this->useExceptions && offset > this->streamLen - this->streamPos) {
-		throw std::out_of_range{detail::OUT_OF_RANGE_ERROR_MESSAGE};
+		throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
 	}
 
 	return this->streamBuffer[this->streamPos + offset];
@@ -44,7 +44,7 @@ std::byte BufferStream::peek(long offset) {
 
 std::vector<std::byte> BufferStream::read_bytes(std::size_t length) {
 	if (this->useExceptions && this->streamPos + length > this->streamLen) {
-		throw std::out_of_range{detail::OUT_OF_RANGE_ERROR_MESSAGE};
+		throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
 	}
 
 	std::vector<std::byte> out;

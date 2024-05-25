@@ -9,14 +9,9 @@
 #include <type_traits>
 #include <vector>
 
-namespace detail {
-
-constexpr const char* OUT_OF_RANGE_ERROR_MESSAGE = "Out of range!";
-
+/// Any POD types are readable directly from the stream
 template<typename T>
-concept PODType = std::is_trivial_v<T> && std::is_standard_layout_v<T>;
-
-} // namespace detail
+concept BufferStreamReadableType = std::is_trivial_v<T> && std::is_standard_layout_v<T>;
 
 class BufferStream {
 public:
@@ -24,7 +19,7 @@ public:
 
 	BufferStream& seek(std::size_t offset, std::ios::seekdir offsetFrom = std::ios::beg);
 
-	template<detail::PODType T = std::byte>
+	template<BufferStreamReadableType T = std::byte>
 	BufferStream& skip(std::size_t n = 1) {
 		if (!n) {
 			return *this;
@@ -38,7 +33,7 @@ public:
 
 	[[nodiscard]] std::byte peek(long offset = 0);
 
-	template<detail::PODType T>
+	template<BufferStreamReadableType T>
 	[[nodiscard]] T read() {
 		T obj{};
 		this->read(obj);
@@ -48,7 +43,7 @@ public:
 	template<std::size_t L>
 	[[nodiscard]] std::array<std::byte, L> read_bytes() {
 		if (this->useExceptions && this->streamPos + L > this->streamLen) {
-			throw std::out_of_range{detail::OUT_OF_RANGE_ERROR_MESSAGE};
+			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
 		}
 
 		std::array<std::byte, L> out;
@@ -64,10 +59,10 @@ public:
 
 	[[nodiscard]] std::string read_string(std::size_t n, bool stopOnNullTerminator = true);
 
-	template<detail::PODType T>
+	template<BufferStreamReadableType T>
 	BufferStream& read(T& obj) {
 		if (this->useExceptions && this->streamPos + sizeof(T) > this->streamLen) {
-			throw std::out_of_range{detail::OUT_OF_RANGE_ERROR_MESSAGE};
+			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
 		}
 
 		for (int i = 0; i < sizeof(T); i++, this->streamPos++) {
@@ -76,10 +71,10 @@ public:
 		return *this;
 	}
 
-	template<detail::PODType T, std::size_t N>
+	template<BufferStreamReadableType T, std::size_t N>
 	BufferStream& read(T(&obj)[N]) {
 		if (this->useExceptions && this->streamPos + sizeof(T) * N > this->streamLen) {
-			throw std::out_of_range{detail::OUT_OF_RANGE_ERROR_MESSAGE};
+			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
 		}
 
 		for (int i = 0; i < sizeof(T) * N; i++, this->streamPos++) {
@@ -88,7 +83,7 @@ public:
 		return *this;
 	}
 
-	template<typename T, std::size_t N>
+	template<BufferStreamReadableType T, std::size_t N>
 	BufferStream& read(std::array<T, N>& obj) {
 		for (int i = 0; i < N; i++) {
 			obj[i] = this->read<T>();
@@ -96,7 +91,7 @@ public:
 		return *this;
 	}
 
-	template<typename T>
+	template<BufferStreamReadableType T>
 	BufferStream& read(std::vector<T>& obj, std::size_t n) {
 		obj.clear();
 		if (!n) {
@@ -144,4 +139,6 @@ protected:
 	std::size_t streamLen;
 	std::size_t streamPos;
 	bool useExceptions;
+
+	static inline constexpr const char* OUT_OF_RANGE_ERROR_MESSAGE = "Out of range!";
 };
