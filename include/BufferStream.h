@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -27,16 +28,13 @@ public:
 			, bufferPos(0)
 			, useExceptions(useExceptions) {}
 
-	template<BufferStreamByteType T, std::size_t N>
-	explicit BufferStream(std::array<T, N>& array, bool useExceptions = true)
-			: BufferStream(array.data(), array.size(), useExceptions) {}
-
-	template<BufferStreamByteType T>
-	explicit BufferStream(std::vector<T>& vector, bool useExceptions = true)
-			: BufferStream(vector.data(), vector.size(), useExceptions) {}
-
-	explicit BufferStream(std::string& string, bool useExceptions = true)
-			: BufferStream(string.data(), string.size(), useExceptions) {}
+	template<typename T>
+	requires BufferStreamByteType<typename T::value_type> && requires(T& t) {
+		{t.data()} -> std::same_as<typename T::value_type*>;
+		{t.size()} -> std::convertible_to<std::size_t>;
+	}
+	explicit BufferStream(T& buffer, bool useExceptions = true)
+			: BufferStream(buffer.data(), buffer.size(), useExceptions) {}
 
 	BufferStream& seek(std::size_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		if (offsetFrom == std::ios::beg) {
