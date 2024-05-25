@@ -165,7 +165,7 @@ public:
 	template<BufferStreamPODType T, std::size_t N>
 	BufferStream& read(std::array<T, N>& obj) {
 		for (int i = 0; i < N; i++) {
-			obj[i] = this->read<T>();
+			this->read(obj[i]);
 		}
 		return *this;
 	}
@@ -254,40 +254,15 @@ public:
 		return obj;
 	}
 
-	template<BufferStreamPODType T, std::size_t L>
-	[[nodiscard]] std::array<T, L> read_bytes() {
-		const std::size_t realLen = sizeof(T) * L;
-		if (this->useExceptions && this->bufferPos + realLen > this->bufferLen) {
-			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
-		}
-
-		std::array<T, L> out;
-		std::memcpy(out.data(), this->buffer + bufferPos, realLen);
-		this->bufferPos += realLen;
-		return out;
-	}
-
 	template<std::size_t L>
 	[[nodiscard]] std::array<std::byte, L> read_bytes() {
-		return this->read_bytes<std::byte, L>();
-	}
-
-	template<BufferStreamPODType T>
-	[[nodiscard]] std::vector<T> read_bytes(std::size_t length) {
-		const std::size_t realLen = sizeof(T) * length;
-		if (this->useExceptions && this->bufferPos + realLen > this->bufferLen) {
-			throw std::out_of_range{OUT_OF_RANGE_ERROR_MESSAGE};
-		}
-
-		std::vector<T> out;
-		out.resize(length);
-		std::memcpy(out.data(), this->buffer + bufferPos, realLen);
-		this->bufferPos += realLen;
-		return out;
+		return this->read<std::array<std::byte, L>>();
 	}
 
 	[[nodiscard]] std::vector<std::byte> read_bytes(std::size_t length) {
-		return this->read_bytes<std::byte>(length);
+		std::vector<std::byte> out;
+		this->read(out, length);
+		return out;
 	}
 
 	[[nodiscard]] std::string read_string() {
