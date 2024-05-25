@@ -1,10 +1,15 @@
 cmake_minimum_required(VERSION 3.16)
 project(bufferstream)
 set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_library(${PROJECT_NAME} STATIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/include/BufferStream.h"
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/BufferStream.cpp")
+# Options
+option(BUFFERSTREAM_BUILD_TESTS "Build tests" OFF)
 
-target_include_directories(${PROJECT_NAME} PUBLIC
-        "${CMAKE_CURRENT_SOURCE_DIR}/include")
+# Create library
+add_library(${PROJECT_NAME} INTERFACE
+        "${CMAKE_CURRENT_SOURCE_DIR}/include/BufferStream.h")
+
+target_include_directories(${PROJECT_NAME} INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
