@@ -47,7 +47,7 @@ TEST(BufferStream, open) {
 	}
 }
 
-TEST(BufferStream, big_endian) {
+TEST(BufferStream, read_big_endian) {
 	{
 		std::byte x{0xAB};
 		BufferStream stream{&x, sizeof(x)};
@@ -61,6 +61,23 @@ TEST(BufferStream, big_endian) {
 
 		auto y = stream.setBigEndian(true).read<std::uint32_t>();
 		EXPECT_EQ(y, 0x00'EF'CD'AB);
+	}
+}
+
+TEST(BufferStream, write_big_endian) {
+	{
+		std::byte x{0xAB};
+		BufferStream stream{&x, sizeof(x)};
+
+		stream.setBigEndian(true).write(std::byte{0xBC}).setBigEndian(false).seek(0);
+		EXPECT_EQ(stream.read<std::byte>(), std::byte{0xBC});
+	}
+	{
+		std::uint32_t x = 0;
+		BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
+
+		stream.setBigEndian(true).write(0xAB'CD'EF'00).setBigEndian(false).seek(0);
+		EXPECT_EQ(stream.read<std::uint32_t>(), 0x00'EF'CD'AB);
 	}
 }
 
@@ -126,43 +143,82 @@ TEST(BufferStream, peek) {
 }
 
 TEST(BufferStream, read_int_ref) {
-	int x = 10;
-	BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
-
 	{
+		int x = 10;
+		BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
+
 		int y = 0;
 		stream.read(y);
 		EXPECT_EQ(y, x);
 	}
-	stream.seek(0);
-
 	{
+		int x = 10;
+		BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
+
 		int y = 0;
 		stream >> y;
 		EXPECT_EQ(y, x);
 	}
-	stream.seek(0);
+}
+
+TEST(BufferStream, write_int_ref) {
+	{
+		int x = 10;
+		BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
+
+		int y = 0;
+		EXPECT_EQ(stream.write(y).seek(0).read<int>(), y);
+	}
+	{
+		int x = 10;
+		BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
+
+		int y = 0;
+		stream << y;
+		EXPECT_EQ(stream.seek(0).read<int>(), y);
+	}
 }
 
 TEST(BufferStream, read_pod_ref) {
-	POD pod{10, 42};
-	BufferStream stream{reinterpret_cast<std::byte*>(&pod), sizeof(pod)};
-
 	{
+		POD pod{10, 42};
+		BufferStream stream{reinterpret_cast<std::byte*>(&pod), sizeof(pod)};
+
 		POD read{};
 		stream.read(read);
 		EXPECT_EQ(read.x, pod.x);
 		EXPECT_EQ(read.y, pod.y);
 	}
-	stream.seek(0);
-
 	{
+		POD pod{10, 42};
+		BufferStream stream{reinterpret_cast<std::byte*>(&pod), sizeof(pod)};
+
 		POD read{};
 		stream >> read;
 		EXPECT_EQ(read.x, pod.x);
 		EXPECT_EQ(read.y, pod.y);
 	}
-	stream.seek(0);
+}
+
+TEST(BufferStream, write_pod_ref) {
+	{
+		POD pod{10, 42};
+		BufferStream stream{reinterpret_cast<std::byte*>(&pod), sizeof(pod)};
+
+		stream.write(POD{20, 84});
+		auto read = stream.seek(0).read<POD>();
+		EXPECT_EQ(read.x, 20);
+		EXPECT_EQ(read.y, 84);
+	}
+	{
+		POD pod{10, 42};
+		BufferStream stream{reinterpret_cast<std::byte*>(&pod), sizeof(pod)};
+
+		stream << POD{20, 84};
+		auto read = stream.seek(0).read<POD>();
+		EXPECT_EQ(read.x, 20);
+		EXPECT_EQ(read.y, 84);
+	}
 }
 
 TEST(BufferStream, read_c_array_ref) {
@@ -212,10 +268,65 @@ TEST(BufferStream, read_c_array_ref) {
 	}
 }
 
+TEST(BufferStream, write_c_array_ref) {
+	{
+		POD podArray[] = {{10, 42}, {20, 84}};
+		BufferStream stream{reinterpret_cast<std::byte*>(podArray), sizeof(POD) * 2};
+
+		POD write[] = {{20, 84}, {40, 168}};
+		POD read[] = {{0, 0}, {0, 0}};
+		stream.write(write).seek(0).read(read);
+		EXPECT_EQ(read[0].x, 20);
+		EXPECT_EQ(read[0].y, 84);
+		EXPECT_EQ(read[1].x, 40);
+		EXPECT_EQ(read[1].y, 168);
+	}
+	{
+		POD podArray[2] = {{10, 42}, {20, 84}};
+		BufferStream stream{reinterpret_cast<std::byte*>(podArray), sizeof(POD) * 2};
+
+		POD write[] = {{20, 84}, {40, 168}};
+		POD read[] = {{0, 0}, {0, 0}};
+		stream << write;
+		stream.seek(0);
+		stream >> read;
+		EXPECT_EQ(read[0].x, 20);
+		EXPECT_EQ(read[0].y, 84);
+		EXPECT_EQ(read[1].x, 40);
+		EXPECT_EQ(read[1].y, 168);
+	}
+	{
+		POD podArray[1][2] = {{{10, 42}, {20, 84}}};
+		BufferStream stream{reinterpret_cast<std::byte*>(podArray), sizeof(POD) * 1 * 2};
+
+		POD write[1][2] = {{{20, 84}, {40, 168}}};
+		POD read[1][2] = {{{0, 0}, {0, 0}}};
+		stream.write(write).seek(0).read(read);
+		EXPECT_EQ(read[0][0].x, 20);
+		EXPECT_EQ(read[0][0].y, 84);
+		EXPECT_EQ(read[0][1].x, 40);
+		EXPECT_EQ(read[0][1].y, 168);
+	}
+	{
+		POD podArray[1][2] = {{{10, 42}, {20, 84}}};
+		BufferStream stream{reinterpret_cast<std::byte*>(podArray), sizeof(POD) * 1 * 2};
+
+		POD write[1][2] = {{{20, 84}, {40, 168}}};
+		POD read[1][2] = {{{0, 0}, {0, 0}}};
+		stream << write;
+		stream.seek(0);
+		stream >> read;
+		EXPECT_EQ(read[0][0].x, 20);
+		EXPECT_EQ(read[0][0].y, 84);
+		EXPECT_EQ(read[0][1].x, 40);
+		EXPECT_EQ(read[0][1].y, 168);
+	}
+}
+
 TEST(BufferStream, read_array_ref) {
 	{
-		std::array<int, 2> podArray{10, 42};
-		BufferStream stream{podArray};
+		std::array<int, 2> array{10, 42};
+		BufferStream stream{array};
 
 		std::array<int, 2> read{};
 		stream.read(read);
@@ -223,8 +334,8 @@ TEST(BufferStream, read_array_ref) {
 		EXPECT_EQ(read[1], 42);
 	}
 	{
-		std::array<int, 2> podArray{10, 42};
-		BufferStream stream{podArray};
+		std::array<int, 2> array{10, 42};
+		BufferStream stream{array};
 
 		std::array<int, 2> read{};
 		stream >> read;
@@ -233,10 +344,33 @@ TEST(BufferStream, read_array_ref) {
 	}
 }
 
+TEST(BufferStream, write_array_ref) {
+	{
+		std::array<int, 2> array{0, 0};
+		BufferStream stream{array};
+
+		std::array<int, 2> write{10, 42};
+		std::array<int, 2> read{};
+		stream.write(write).seek(0).read(read);
+		EXPECT_EQ(read[0], 10);
+		EXPECT_EQ(read[1], 42);
+	}
+	{
+		std::array<int, 2> array{0, 0};
+		BufferStream stream{array};
+
+		std::array<int, 2> write{10, 42};
+		std::array<int, 2> read{};
+		stream.write(write).seek(0).read(read);
+		EXPECT_EQ(read[0], 10);
+		EXPECT_EQ(read[1], 42);
+	}
+}
+
 TEST(BufferStream, read_stl_container_ref) {
 	{
-		std::vector<int> podArray{10, 42};
-		BufferStream stream{podArray};
+		std::vector<int> array{10, 42};
+		BufferStream stream{array};
 
 		std::vector<int> read;
 		stream.read(read, 2);
@@ -244,8 +378,8 @@ TEST(BufferStream, read_stl_container_ref) {
 		EXPECT_EQ(read[1], 42);
 	}
 	{
-		std::vector<int> podArray{10, 42};
-		BufferStream stream{podArray};
+		std::vector<int> array{10, 42};
+		BufferStream stream{array};
 
 		std::vector<int> read;
 		stream >> read >> read;
@@ -253,8 +387,8 @@ TEST(BufferStream, read_stl_container_ref) {
 		EXPECT_EQ(read[1], 42);
 	}
 	{
-		std::vector<int> podArray{10, 42};
-		BufferStream stream{podArray};
+		std::vector<int> array{10, 42};
+		BufferStream stream{array};
 
 		std::deque<int> read;
 		stream.read(read, 2);
@@ -262,11 +396,58 @@ TEST(BufferStream, read_stl_container_ref) {
 		EXPECT_EQ(read[1], 42);
 	}
 	{
-		std::vector<int> podArray{10, 42};
-		BufferStream stream{podArray};
+		std::vector<int> array{10, 42};
+		BufferStream stream{array};
 
 		std::deque<int> read;
 		stream >> read >> read;
+		EXPECT_EQ(read[0], 10);
+		EXPECT_EQ(read[1], 42);
+	}
+}
+
+TEST(BufferStream, write_stl_container_ref) {
+	{
+		std::vector<int> array;
+		BufferStream stream{array};
+
+		std::vector<int> read;
+		stream.write(10).write(42).seek(0).read(read, 2);
+		EXPECT_EQ(array.size(), 2);
+		EXPECT_EQ(read[0], 10);
+		EXPECT_EQ(read[1], 42);
+	}
+	{
+		std::vector<int> array;
+		BufferStream stream{array};
+
+		std::vector<int> read;
+		stream << 10 << 42;
+		stream.seek(0);
+		stream >> read >> read;
+		EXPECT_EQ(array.size(), 2);
+		EXPECT_EQ(read[0], 10);
+		EXPECT_EQ(read[1], 42);
+	}
+	{
+		std::vector<int> array;
+		BufferStream stream{array};
+
+		std::deque<int> read;
+		stream.write(10).write(42).seek(0).read(read, 2);
+		EXPECT_EQ(array.size(), 2);
+		EXPECT_EQ(read[0], 10);
+		EXPECT_EQ(read[1], 42);
+	}
+	{
+		std::vector<int> array;
+		BufferStream stream{array};
+
+		std::deque<int> read;
+		stream << 10 << 42;
+		stream.seek(0);
+		stream >> read >> read;
+		EXPECT_EQ(array.size(), 2);
 		EXPECT_EQ(read[0], 10);
 		EXPECT_EQ(read[1], 42);
 	}
@@ -315,6 +496,47 @@ TEST(BufferStream, read_string_ref) {
 		EXPECT_EQ(stream.tell(), 13);
 	}
 	stream.seek(0);
+}
+
+TEST(BufferStream, write_string_ref) {
+	std::string buffer;
+	BufferStream stream{buffer};
+
+	std::string data = "Hello world";
+
+	{
+		std::string read;
+		stream.write(data).seek(0).read(read);
+		EXPECT_STREQ(read.c_str(), "Hello world");
+	}
+	stream.seek(0);
+	buffer.clear();
+
+	{
+		std::string read;
+		stream << data;
+		stream.seek(0);
+		stream >> read;
+		EXPECT_STREQ(read.c_str(), "Hello world");
+	}
+	stream.seek(0);
+	buffer.clear();
+
+	{
+		std::string read;
+		stream.write(data, false).seek(0).read(read, data.size());
+		EXPECT_STREQ(read.c_str(), "Hello world");
+	}
+	stream.seek(0);
+	buffer.clear();
+
+	{
+		std::string read;
+		stream.write(data, false, 5).seek(0).read(read, 5);
+		EXPECT_STREQ(read.c_str(), "Hello");
+	}
+	stream.seek(0);
+	buffer.clear();
 }
 
 TEST(BufferStream, read_int) {
@@ -384,20 +606,20 @@ TEST(BufferStream, read_string) {
 }
 
 TEST(BufferStream, read_bytes) {
-	int x = 10;
-	BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
-
 	{
+		int x = 10;
+		BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
+
 		std::array<std::byte, sizeof(x)> bytes = stream.read_bytes<sizeof(x)>();
 		EXPECT_EQ(bytes.size(), 4);
 		EXPECT_EQ(bytes.at(0), std::byte{10});
 	}
-	stream.seek(0);
-
 	{
+		int x = 10;
+		BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
+
 		std::vector<std::byte> bytes = stream.read_bytes(sizeof(x));
 		EXPECT_EQ(bytes.size(), 4);
 		EXPECT_EQ(bytes.at(0), std::byte{10});
 	}
-	stream.seek(0);
 }

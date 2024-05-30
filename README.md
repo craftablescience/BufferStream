@@ -91,6 +91,40 @@ std::array<std::byte, 10> bytesArray = stream.read_bytes<10>();
 std::vector<std::byte> bytesVector = stream.read_bytes(10);
 ```
 
+### Write
+
+Writing is done much the same way as reading:
+```cpp
+std::uint32_t value;
+
+stream.write(value);
+// -- OR --
+stream << value;
+```
+
+It's possible to write from STL containers:
+```cpp
+std::array<int, 4> ints;
+std::deque<float> floats;
+...
+stream << ints;
+stream << floats;
+```
+
+Strings are supported:
+```cpp
+// Write string and null terminator
+std::string str = "Hello world";
+stream << str;
+
+// Write string without null terminator
+stream.write(str, false);
+
+// Write string with null terminator, with a maximum length of 6 characters
+stream.write(str, true, 6);
+// Stream stores "Hello\0"
+```
+
 ### Seek
 
 Seeking works similarly to how it works in an istream:
@@ -131,15 +165,16 @@ stream
 	.skip<std::uint32_t>()
 	.read(y)
 	.seek(4, std::ios::end)
-	.read(z);
+	.write(z);
 
-// When read is the only method being called in the chain, this works too
-stream >> x >> y >> z;
+// When read or write are the only methods being called in the chain, this works too
+stream >> x >> y >> z << w;
 ```
 
-Attempting to read OOB will result in a `std::overflow_error` exception by default.
-If an exception is thrown during a call to a method on a stream, the stream state will
-not be modified. This behavior can be disabled:
+Attempting to read OOB will result in a `std::overflow_error` exception by default. If a resize
+callback is not set (it's set automatically for resizable std container types), writing OOB will
+result in this exception as well. If an exception is thrown during a call to a method on a stream,
+the stream state will not be modified. This behavior can be disabled:
 ```cpp
 std::vector<std::byte> buffer{{}}; // size 1
 BufferStream stream{buffer};
@@ -149,11 +184,12 @@ stream.read<std::int32_t>(); // Won't throw an exception, but don't ever do this
 ```
 
 Big-Endian conversion may be enabled as follows. Keep in mind that if big-endian support is enabled,
-POD types composed of other types such as structs will need to be decomposed when reading them, or
-`std::invalid_argument` will be thrown:
+POD types composed of other types such as structs will need to be decomposed when reading or writing
+them. If they are not decomposed, the data will not be modified to fit the desired endianness, and
+if exceptions are enabled `std::invalid_argument` will be thrown:
 ```cpp
-const int x = 0xAB'CD'EF'00;
-BufferStream stream{reinterpret_cast<const std::byte*>(&x), sizeof(int)};
+int x = 0xAB'CD'EF'00;
+BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(int)};
 stream.setBigEndian(true);
 stream.read<int>(); // 0x00'EF'CD'AB
 
@@ -166,4 +202,26 @@ auto vec = stream.read<Vector>(); // INCORRECT - Will throw exception!
 
 Vector vec{};
 stream >> vec.x >> vec.y; // Correct
+```
+
+When writing to a std container, the stream will automatically resize the container by
+powers of two when it needs more space. This can be disabled by adding an argument to
+the constructor:
+```cpp
+std::vector<std::byte> buffer(32);
+BufferStream stream{buffer, false};
+```
+
+Additionally, since the container size is adjusted by powers of two, do not treat the size
+of the container as the size of the stream! When the program is finished writing to the stream,
+resize the buffer to the stream's size before using it anywhere:
+```cpp
+std::vector<std::byte> buffer;
+BufferStream stream{buffer};
+...
+// Keep in mind the stream size is measured in bytes
+buffer.resize(stream.size());
+...
+// It may also be convenient to copy the data to a new container
+std::vector<std::byte> newData = stream.seek(0).read_bytes(stream.size());
 ```

@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <ios>
 #include <stdexcept>
 #include <string>
@@ -26,10 +27,20 @@ concept BufferStreamPossiblyNonContiguousContainer = BufferStreamPODType<typenam
 };
 
 /// STL container types that can hold POD type values and be used as buffer storage.
-/// Guarantees T::data() is defined, on top of BufferStreamNonContiguousContainer.
+/// Guarantees T::data() is defined and T::resize(std::size_t) is NOT defined, on top of BufferStreamPossiblyNonContiguousContainer.
 template<typename T>
-concept BufferStreamContiguousContainer = BufferStreamPossiblyNonContiguousContainer<T> && requires(T& t) {
+concept BufferStreamNonResizableContiguousContainer = BufferStreamPossiblyNonContiguousContainer<T> && requires(T& t) {
 	{t.data()} -> std::same_as<typename T::value_type*>;
+} && !requires(T& t) {
+	{t.resize(1)} -> std::same_as<void>;
+};
+
+/// STL container types that can hold POD type values, be used as buffer storage, and grow/shrink.
+/// Guarantees T::data() is defined and T::resize(std::size_t) is defined, on top of BufferStreamPossiblyNonContiguousContainer.
+template<typename T>
+concept BufferStreamResizableContiguousContainer = BufferStreamPossiblyNonContiguousContainer<T> && requires(T& t) {
+	{t.data()} -> std::same_as<typename T::value_type*>;
+	{t.resize(1)} -> std::same_as<void>;
 };
 
 /// STL container types that can hold POD type values but can't be used as buffer storage.
@@ -42,11 +53,14 @@ concept BufferStreamPossiblyNonContiguousResizableContainer = BufferStreamPossib
 
 class BufferStream {
 public:
+	using ResizeCallback = std::function<std::byte*(BufferStream* stream, std::size_t newLen)>;
+
 	template<BufferStreamPODType T>
-	BufferStream(const T* buffer, std::size_t bufferLen)
-			: buffer(reinterpret_cast<const std::byte*>(buffer))
+	BufferStream(T* buffer, std::size_t bufferLen, ResizeCallback resizeCallback = nullptr)
+			: buffer(reinterpret_cast<std::byte*>(buffer))
 			, bufferLen(sizeof(T) * bufferLen)
 			, bufferPos(0)
+			, bufferResizeCallback(std::move(resizeCallback))
 			, useExceptions(true)
 			, bigEndian(false) {}
 
@@ -58,9 +72,22 @@ public:
 	explicit BufferStream(T(&buffer)[M][N])
 			: BufferStream(buffer, sizeof(T) * M * N) {}
 
-	template<BufferStreamContiguousContainer T>
+	template<BufferStreamNonResizableContiguousContainer T>
 	explicit BufferStream(T& buffer)
-			: BufferStream(buffer.data(), sizeof(typename T::value_type) * buffer.size()) {}
+			: BufferStream(buffer.data(), buffer.size() * sizeof(typename T::value_type)) {}
+
+	template<BufferStreamResizableContiguousContainer T>
+	explicit BufferStream(T& buffer, bool resizable = true)
+			: BufferStream(buffer.data(), buffer.size() * sizeof(typename T::value_type), resizable ? [&buffer](BufferStream* stream, std::size_t newLen) {
+				while (buffer.size() * sizeof(typename T::value_type) < newLen) {
+					if (buffer.size() == 0) {
+						buffer.resize(1);
+					} else {
+						buffer.resize(buffer.size() * 2);
+					}
+				}
+				return reinterpret_cast<std::byte*>(buffer.data());
+			} : ResizeCallback{nullptr}) {}
 
 	BufferStream& setExceptionsEnabled(bool exceptions) {
 		this->useExceptions = exceptions;
@@ -75,17 +102,17 @@ public:
 	BufferStream& seek(std::size_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		if (offsetFrom == std::ios::beg) {
 			if (this->useExceptions && offset > this->bufferLen) {
-				throw std::overflow_error{OVERFLOW_ERROR_MESSAGE};
+				throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 			}
 			this->bufferPos = offset;
 		} else if (offsetFrom == std::ios::cur) {
 			if (this->useExceptions && this->bufferPos + offset > this->bufferLen) {
-				throw std::overflow_error{OVERFLOW_ERROR_MESSAGE};
+				throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 			}
 			this->bufferPos += offset;
 		} else if (offsetFrom == std::ios::end) {
 			if (this->useExceptions && offset > this->bufferLen) {
-				throw std::overflow_error{OVERFLOW_ERROR_MESSAGE};
+				throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 			}
 			this->bufferPos = this->bufferLen - offset;
 		}
@@ -104,13 +131,21 @@ public:
 		return this->bufferPos;
 	}
 
+	[[nodiscard]] const std::byte* data() const {
+		return this->buffer;
+	}
+
+	[[nodiscard]] std::byte* data() {
+		return this->buffer;
+	}
+
 	[[nodiscard]] std::size_t size() const {
 		return this->bufferLen;
 	}
 
 	[[nodiscard]] std::byte peek(long offset = 1) const {
 		if (this->useExceptions && offset > this->bufferLen - this->bufferPos) {
-			throw std::overflow_error{OVERFLOW_ERROR_MESSAGE};
+			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 		}
 
 		return this->buffer[this->bufferPos + offset];
@@ -119,37 +154,31 @@ public:
 	template<BufferStreamPODType T>
 	BufferStream& read(T& obj) {
 		if (this->useExceptions && this->bufferPos + sizeof(T) > this->bufferLen) {
-			throw std::overflow_error{OVERFLOW_ERROR_MESSAGE};
+			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 		}
-
-		static constexpr auto swapEndian = [](T& t) {
-			union {
-				T t;
-				std::byte bytes[sizeof(T)];
-			} source{}, dest{};
-			source.t = t;
-			for (size_t k = 0; k < sizeof(T); k++) {
-				dest.bytes[k] = source.bytes[sizeof(T) - k - 1];
-			}
-			t = dest.t;
-		};
 
 		std::memcpy(&obj, this->buffer + this->bufferPos, sizeof(T));
 		if constexpr (sizeof(T) > 1) {
 			if constexpr (std::endian::native == std::endian::little) {
 				if (this->bigEndian) {
 					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
-						swapEndian(obj);
+						swapEndian(&obj);
 					} else {
-						throw std::invalid_argument{BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
+						// Just don't swap the bytes...
+						if (this->useExceptions) {
+							throw std::invalid_argument{BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
+						}
 					}
 				}
 			} else if constexpr (std::endian::native == std::endian::big) {
 				if (!this->bigEndian) {
 					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
-						swapEndian(obj);
+						swapEndian(&obj);
 					} else {
-						throw std::invalid_argument{BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
+						// Just don't swap the bytes...
+						if (this->useExceptions) {
+							throw std::invalid_argument{BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
+						}
 					}
 				}
 			} else {
@@ -166,10 +195,54 @@ public:
 		return this->read(obj);
 	}
 
+	template<BufferStreamPODType T>
+	BufferStream& write(const T& obj) {
+		if (this->bufferPos + sizeof(T) > this->bufferLen && !this->resizeBuffer(this->bufferPos + sizeof(T)) && this->useExceptions) {
+			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
+		}
+
+		std::memcpy(this->buffer + this->bufferPos, &obj, sizeof(T));
+		if constexpr (sizeof(T) > 1) {
+			if constexpr (std::endian::native == std::endian::little) {
+				if (this->bigEndian) {
+					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
+						swapEndian(reinterpret_cast<T*>(this->buffer + this->bufferPos));
+					} else {
+						// Just don't swap the bytes...
+						if (this->useExceptions) {
+							throw std::invalid_argument{BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
+						}
+					}
+				}
+			} else if constexpr (std::endian::native == std::endian::big) {
+				if (!this->bigEndian) {
+					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
+						swapEndian(reinterpret_cast<T*>(this->buffer + this->bufferPos));
+					} else {
+						// Just don't swap the bytes...
+						if (this->useExceptions) {
+							throw std::invalid_argument{BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
+						}
+					}
+				}
+			} else {
+				static_assert("Need to investigate what the proper endianness of this platform is!");
+			}
+		}
+		this->bufferPos += sizeof(T);
+
+		return *this;
+	}
+
+	template<BufferStreamPODType T>
+	BufferStream& operator<<(const T& obj) {
+		return this->write(obj);
+	}
+
 	template<BufferStreamPODType T, std::size_t N>
 	BufferStream& read(T(&obj)[N]) {
 		if (this->useExceptions && this->bufferPos + sizeof(T) * N > this->bufferLen) {
-			throw std::overflow_error{OVERFLOW_ERROR_MESSAGE};
+			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 		}
 
 		for (int i = 0; i < N; i++) {
@@ -183,10 +256,27 @@ public:
 		return this->read(obj);
 	}
 
+	template<BufferStreamPODType T, std::size_t N>
+	BufferStream& write(const T(&obj)[N]) {
+		if (this->bufferPos + sizeof(T) * N > this->bufferLen && !this->resizeBuffer(this->bufferPos + sizeof(T) * N) && this->useExceptions) {
+			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
+		}
+
+		for (int i = 0; i < N; i++) {
+			this->write(obj[i]);
+		}
+		return *this;
+	}
+
+	template<BufferStreamPODType T, std::size_t N>
+	BufferStream& operator<<(const T(&obj)[N]) {
+		return this->write(obj);
+	}
+
 	template<BufferStreamPODType T, std::size_t M, std::size_t N>
 	BufferStream& read(T(&obj)[M][N]) {
 		if (this->useExceptions && this->bufferPos + sizeof(T) * M * N > this->bufferLen) {
-			throw std::overflow_error{OVERFLOW_ERROR_MESSAGE};
+			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 		}
 
 		for (int i = 0; i < M; i++) {
@@ -202,8 +292,31 @@ public:
 		return this->read(obj);
 	}
 
+	template<BufferStreamPODType T, std::size_t M, std::size_t N>
+	BufferStream& write(const T(&obj)[M][N]) {
+		if (this->bufferPos + sizeof(T) * M * N > this->bufferLen && !this->resizeBuffer(this->bufferPos + sizeof(T) * M * N) && this->useExceptions) {
+			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
+		}
+
+		for (int i = 0; i < M; i++) {
+			for (int j = 0; j < N; j++) {
+				this->write(obj[i][j]);
+			}
+		}
+		return *this;
+	}
+
+	template<BufferStreamPODType T, std::size_t M, std::size_t N>
+	BufferStream& operator<<(const T(&obj)[M][N]) {
+		return this->write(obj);
+	}
+
 	template<BufferStreamPODType T, std::size_t N>
 	BufferStream& read(std::array<T, N>& obj) {
+		if (this->useExceptions && this->bufferPos + sizeof(T) * N > this->bufferLen) {
+			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+		}
+
 		for (int i = 0; i < N; i++) {
 			this->read(obj[i]);
 		}
@@ -215,14 +328,35 @@ public:
 		return this->read(obj);
 	}
 
+	template<BufferStreamPODType T, std::size_t N>
+	BufferStream& write(const std::array<T, N>& obj) {
+		if (this->bufferPos + sizeof(T) * N > this->bufferLen && !this->resizeBuffer(this->bufferPos + sizeof(T) * N) && this->useExceptions) {
+			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
+		}
+
+		for (int i = 0; i < N; i++) {
+			this->write(obj[i]);
+		}
+		return *this;
+	}
+
+	template<BufferStreamPODType T, std::size_t N>
+	BufferStream& operator<<(const std::array<T, N>& obj) {
+		return this->write(obj);
+	}
+
 	template<BufferStreamPossiblyNonContiguousResizableContainer T>
 	BufferStream& read(T& obj, std::size_t n) {
+		if (this->useExceptions && this->bufferPos + sizeof(typename T::value_type) * n > this->bufferLen) {
+			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+		}
+
 		obj.clear();
 		if (!n) {
 			return *this;
 		}
 
-		// BufferStreamNonContiguousResizableContainer doesn't guarantee T::reserve(std::size_t) exists!
+		// BufferStreamPossiblyNonContiguousResizableContainer doesn't guarantee T::reserve(std::size_t) exists!
 		if constexpr (requires([[maybe_unused]] T& t) {
 			{t.reserve(1)} -> std::same_as<void>;
 		}) {
@@ -240,6 +374,23 @@ public:
 		return *this;
 	}
 
+	template<BufferStreamPossiblyNonContiguousResizableContainer T>
+	BufferStream& write(const T& obj) {
+		if (this->bufferPos + sizeof(typename T::value_type) * obj.size() > this->bufferLen && !this->resizeBuffer(this->bufferPos + sizeof(typename T::value_type) * obj.size()) && this->useExceptions) {
+			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
+		}
+
+		for (int i = 0; i < obj.size(); i++) {
+			this->write(obj[i]);
+		}
+		return *this;
+	}
+
+	template<BufferStreamPossiblyNonContiguousResizableContainer T>
+	BufferStream& operator<<(const T& obj) {
+		return this->write(obj);
+	}
+
 	BufferStream& read(std::string& obj) {
 		obj.clear();
 		char temp = this->read<char>();
@@ -254,7 +405,34 @@ public:
 		return this->read(obj);
 	}
 
+	BufferStream& write(const std::string& obj, bool addNullTerminator = true, std::size_t maxSize = 0) {
+		auto stringByteSize = maxSize == 0 ? (sizeof(typename std::string::value_type) * obj.size() + (addNullTerminator ? sizeof(typename std::string::value_type) : 0)) : maxSize;
+		if (this->bufferPos + stringByteSize > this->bufferLen && !this->resizeBuffer(this->bufferPos + stringByteSize) && this->useExceptions) {
+			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
+		}
+
+		if (maxSize == 0) {
+			maxSize = obj.size() + 1;
+		}
+		for (std::size_t i = 0; i < maxSize; i++) {
+			if (i < obj.size() && !(addNullTerminator && i == maxSize - 1)) {
+				this->write(obj[i]);
+			} else {
+				this->write('\0');
+			}
+		}
+		return *this;
+	}
+
+	BufferStream& operator<<(const std::string& obj) {
+		return this->write(obj);
+	}
+
 	BufferStream& read(std::string& obj, std::size_t n, bool stopOnNullTerminator = true) {
+		if (this->useExceptions && this->bufferPos + sizeof(typename std::string::value_type) * n > this->bufferLen) {
+			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+		}
+
 		obj.clear();
 		if (!n) {
 			return *this;
@@ -318,12 +496,36 @@ public:
 	}
 
 protected:
-	const std::byte* buffer;
+	std::byte* buffer;
 	std::size_t bufferLen;
 	std::size_t bufferPos;
+	ResizeCallback bufferResizeCallback;
 	bool useExceptions;
 	bool bigEndian;
 
-	static inline constexpr const char* OVERFLOW_ERROR_MESSAGE = "Attempted to read value out of buffer bounds!";
+	static inline constexpr const char* OVERFLOW_READ_ERROR_MESSAGE = "Attempted to read value out of buffer bounds!";
+	static inline constexpr const char* OVERFLOW_WRITE_ERROR_MESSAGE = "Attempted to write value out of buffer bounds!";
 	static inline constexpr const char* BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE = "Cannot change endianness of complex types!";
+
+	[[nodiscard]] bool resizeBuffer(std::size_t newLen) {
+		if (!this->bufferResizeCallback) {
+			return false;
+		}
+		this->buffer = this->bufferResizeCallback(this, newLen);
+		this->bufferLen = newLen;
+		return true;
+	}
+
+	template<BufferStreamPODType T>
+	static constexpr void swapEndian(T* t) {
+		union {
+			T t;
+			std::byte bytes[sizeof(T)];
+		} source{}, dest{};
+		source.t = *t;
+		for (size_t k = 0; k < sizeof(T); k++) {
+			dest.bytes[k] = source.bytes[sizeof(T) - k - 1];
+		}
+		*t = dest.t;
+	};
 };
