@@ -131,14 +131,6 @@ public:
 		return this->bufferPos;
 	}
 
-	[[nodiscard]] const std::byte* data() const {
-		return this->buffer;
-	}
-
-	[[nodiscard]] std::byte* data() {
-		return this->buffer;
-	}
-
 	[[nodiscard]] std::size_t size() const {
 		return this->bufferLen;
 	}
@@ -528,4 +520,31 @@ protected:
 		}
 		*t = dest.t;
 	};
+};
+
+class BufferStreamReadOnly : public BufferStream {
+public:
+	template<BufferStreamPODType T>
+	BufferStreamReadOnly(const T* buffer, std::size_t bufferLen)
+			: BufferStream(const_cast<T*>(buffer), bufferLen) {}
+
+	template<BufferStreamPODType T, std::size_t N>
+	explicit BufferStreamReadOnly(T(&buffer)[N])
+			: BufferStreamReadOnly(const_cast<const T*>(buffer), sizeof(T) * N) {}
+
+	template<BufferStreamPODType T, std::size_t M, std::size_t N>
+	explicit BufferStreamReadOnly(T(&buffer)[M][N])
+			: BufferStreamReadOnly(const_cast<const T*>(buffer), sizeof(T) * M * N) {}
+
+	template<BufferStreamNonResizableContiguousContainer T>
+	explicit BufferStreamReadOnly(T& buffer)
+			: BufferStreamReadOnly(const_cast<const typename T::value_type*>(buffer.data()), buffer.size() * sizeof(typename T::value_type)) {}
+
+	template<BufferStreamResizableContiguousContainer T>
+	explicit BufferStreamReadOnly(T& buffer)
+			: BufferStreamReadOnly(const_cast<const typename T::value_type*>(buffer.data()), buffer.size() * sizeof(typename T::value_type)) {}
+
+private:
+	using BufferStream::write;
+	using BufferStream::operator<<;
 };

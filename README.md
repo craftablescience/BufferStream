@@ -125,6 +125,15 @@ stream.write(str, true, 6);
 // Stream stores "Hello\0"
 ```
 
+If writing is not desired, or creating the stream with a const pointer is required,
+use the BufferStreamReadOnly class to avoid this potential impasse. It hides all
+the functions that write, allowing the code to compile alright.
+```cpp
+const std::byte* buffer = ...;
+std::size_t size = ...;
+BufferStreamReadOnly stream{buffer, size}; // Works!
+```
+
 ### Seek
 
 Seeking works similarly to how it works in an istream:
