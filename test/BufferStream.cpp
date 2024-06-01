@@ -369,6 +369,24 @@ TEST(BufferStream, write_array_ref) {
 
 TEST(BufferStream, read_stl_container_ref) {
 	{
+		std::vector<char> array{'A', 'B'};
+		BufferStream stream{array};
+
+		std::vector<char> read;
+		stream.read(read, 2);
+		EXPECT_EQ(read[0], 'A');
+		EXPECT_EQ(read[1], 'B');
+	}
+	{
+		std::vector<char> array{'A', 'B'};
+		BufferStream stream{array};
+
+		std::vector<char> read;
+		stream >> read >> read;
+		EXPECT_EQ(read[0], 'A');
+		EXPECT_EQ(read[1], 'B');
+	}
+	{
 		std::vector<int> array{10, 42};
 		BufferStream stream{array};
 
@@ -407,6 +425,28 @@ TEST(BufferStream, read_stl_container_ref) {
 }
 
 TEST(BufferStream, write_stl_container_ref) {
+	{
+		std::vector<char> array;
+		BufferStream stream{array};
+
+		std::vector<char> read;
+		stream.write('A').write('B').seek(0).read(read, 2);
+		EXPECT_EQ(array.size(), 2);
+		EXPECT_EQ(read[0], 'A');
+		EXPECT_EQ(read[1], 'B');
+	}
+	{
+		std::vector<char> array;
+		BufferStream stream{array};
+
+		std::vector<char> read;
+		stream << 'A' << 'B';
+		stream.seek(0);
+		stream >> read >> read;
+		EXPECT_EQ(array.size(), 2);
+		EXPECT_EQ(read[0], 'A');
+		EXPECT_EQ(read[1], 'B');
+	}
 	{
 		std::vector<int> array;
 		BufferStream stream{array};

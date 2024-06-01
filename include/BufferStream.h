@@ -237,8 +237,13 @@ public:
 			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 		}
 
-		for (int i = 0; i < N; i++) {
-			this->read(obj[i]);
+		if constexpr (sizeof(T) == 1) {
+			std::memcpy(obj, this->buffer + this->bufferPos, N);
+			this->bufferPos += N;
+		} else {
+			for (int i = 0; i < N; i++) {
+				this->read(obj[i]);
+			}
 		}
 		return *this;
 	}
@@ -254,8 +259,13 @@ public:
 			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
-		for (int i = 0; i < N; i++) {
-			this->write(obj[i]);
+		if constexpr (sizeof(T) == 1) {
+			std::memcpy(this->buffer + this->bufferPos, obj, N);
+			this->bufferPos += N;
+		} else {
+			for (int i = 0; i < N; i++) {
+				this->write(obj[i]);
+			}
 		}
 		return *this;
 	}
@@ -309,8 +319,13 @@ public:
 			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 		}
 
-		for (int i = 0; i < N; i++) {
-			this->read(obj[i]);
+		if constexpr (sizeof(T) == 1) {
+			std::memcpy(obj.data(), this->buffer + this->bufferPos, N);
+			this->bufferPos += N;
+		} else {
+			for (int i = 0; i < N; i++) {
+				this->read(obj[i]);
+			}
 		}
 		return *this;
 	}
@@ -326,8 +341,13 @@ public:
 			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
-		for (int i = 0; i < N; i++) {
-			this->write(obj[i]);
+		if constexpr (sizeof(T) == 1) {
+			std::memcpy(this->buffer + this->bufferPos, obj.data(), N);
+			this->bufferPos += N;
+		} else {
+			for (int i = 0; i < N; i++) {
+				this->write(obj[i]);
+			}
 		}
 		return *this;
 	}
@@ -348,14 +368,20 @@ public:
 			return *this;
 		}
 
-		// BufferStreamPossiblyNonContiguousResizableContainer doesn't guarantee T::reserve(std::size_t) exists!
-		if constexpr (requires([[maybe_unused]] T& t) {
-			{t.reserve(1)} -> std::same_as<void>;
-		}) {
-			obj.reserve(n);
-		}
-		for (int i = 0; i < n; i++) {
-			obj.push_back(this->read<typename T::value_type>());
+		if constexpr (sizeof(T) == 1 && BufferStreamResizableContiguousContainer<T>) {
+			obj.resize(n);
+			std::memcpy(obj.data(), this->buffer + this->bufferPos, n);
+			this->bufferPos += n;
+		} else {
+			// BufferStreamPossiblyNonContiguousResizableContainer doesn't guarantee T::reserve(std::size_t) exists!
+			if constexpr (requires([[maybe_unused]] T& t) {
+				{t.reserve(1)} -> std::same_as<void>;
+			}) {
+				obj.reserve(n);
+			}
+			for (int i = 0; i < n; i++) {
+				obj.push_back(this->read<typename T::value_type>());
+			}
 		}
 		return *this;
 	}
@@ -372,8 +398,13 @@ public:
 			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
-		for (int i = 0; i < obj.size(); i++) {
-			this->write(obj[i]);
+		if constexpr (sizeof(T) == 1 && (BufferStreamNonResizableContiguousContainer<T> || BufferStreamResizableContiguousContainer<T>)) {
+			std::memcpy(this->buffer + this->bufferPos, obj.data(), obj.size());
+			this->bufferPos += obj.size();
+		} else {
+			for (int i = 0; i < obj.size(); i++) {
+				this->write(obj[i]);
+			}
 		}
 		return *this;
 	}
