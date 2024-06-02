@@ -8,6 +8,7 @@
 #include <cstring>
 #include <functional>
 #include <ios>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
@@ -398,6 +399,10 @@ public:
 			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
+		if (obj.size() == 0) {
+			return *this;
+		}
+
 		if constexpr (sizeof(T) == 1 && (BufferStreamNonResizableContiguousContainer<T> || BufferStreamResizableContiguousContainer<T>)) {
 			std::memcpy(this->buffer + this->bufferPos, obj.data(), obj.size());
 			this->bufferPos += obj.size();
@@ -411,6 +416,85 @@ public:
 
 	template<BufferStreamPossiblyNonContiguousResizableContainer T>
 	BufferStream& operator<<(const T& obj) {
+		return this->write(obj);
+	}
+
+	template<BufferStreamPODType T>
+	BufferStream& read(std::span<T>& obj) {
+		if (this->useExceptions && this->bufferPos + sizeof(T) * obj.size() > this->bufferLen) {
+			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+		}
+
+		if (obj.empty()) {
+			return *this;
+		}
+
+		if constexpr (sizeof(T) == 1) {
+			std::memcpy(obj.data(), this->buffer + this->bufferPos, obj.size());
+			this->bufferPos += obj.size();
+		} else {
+			for (int i = 0; i < obj.size(); i++) {
+				obj[i] = this->read<T>();
+			}
+		}
+		return *this;
+	}
+
+	template<BufferStreamPODType T>
+	BufferStream& operator>>(std::span<T>& obj) {
+		this->read(obj);
+		return *this;
+	}
+
+	template<BufferStreamPODType T>
+	BufferStream& read(std::span<T>& obj, std::size_t n) {
+		if (this->useExceptions && this->bufferPos + sizeof(T) * n > this->bufferLen) {
+			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+		}
+
+		if (!n) {
+			return *this;
+		}
+
+		if (obj.empty()) {
+			obj = std::span<T>{reinterpret_cast<T*>(this->buffer + this->bufferPos), n};
+			this->bufferPos += sizeof(T) * n;
+		} else {
+			if constexpr (sizeof(T) == 1) {
+				std::memcpy(obj.data(), this->buffer + this->bufferPos, n);
+				this->bufferPos += n;
+			} else {
+				for (int i = 0; i < n; i++) {
+					obj[i] = this->read<T>();
+				}
+			}
+		}
+		return *this;
+	}
+
+	template<BufferStreamPODType T>
+	BufferStream& write(const std::span<T>& obj) {
+		if (this->bufferPos + sizeof(T) * obj.size() > this->bufferLen && !this->resizeBuffer(this->bufferPos + sizeof(T) * obj.size()) && this->useExceptions) {
+			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
+		}
+
+		if (obj.empty()) {
+			return *this;
+		}
+
+		if constexpr (sizeof(T) == 1) {
+			std::memcpy(this->buffer + this->bufferPos, obj.data(), obj.size());
+			this->bufferPos += obj.size();
+		} else {
+			for (int i = 0; i < obj.size(); i++) {
+				this->write(obj[i]);
+			}
+		}
+		return *this;
+	}
+
+	template<BufferStreamPODType T>
+	BufferStream& operator<<(const std::span<T>& obj) {
 		return this->write(obj);
 	}
 
@@ -493,6 +577,21 @@ public:
 		T obj{};
 		this->read(obj, n);
 		return obj;
+	}
+
+	template<BufferStreamPODType T>
+	[[nodiscard]] std::span<T> read_span(std::size_t n) {
+		if (this->useExceptions && this->bufferPos + sizeof(T) * n > this->bufferLen) {
+			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+		}
+
+		if (!n) {
+			return {};
+		}
+
+		std::span<T> out{reinterpret_cast<T*>(this->buffer + this->bufferPos), n};
+		this->bufferPos += sizeof(T) * n;
+		return out;
 	}
 
 	[[nodiscard]] std::string read_string() {

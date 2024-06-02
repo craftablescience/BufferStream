@@ -426,70 +426,182 @@ TEST(BufferStream, read_stl_container_ref) {
 
 TEST(BufferStream, write_stl_container_ref) {
 	{
-		std::vector<char> array;
+		std::vector<char> array{'A', 'B'};
 		BufferStream stream{array};
 
-		std::vector<char> read;
-		stream.write('A').write('B').seek(0).read(read, 2);
-		EXPECT_EQ(array.size(), 2);
+		std::vector<char> write;
+		stream.write(write);
+		EXPECT_EQ(array[0], 'A');
+		EXPECT_EQ(array[1], 'B');
+	}
+	{
+		std::vector<char> array{'A', 'B'};
+		BufferStream stream{array};
+
+		std::vector<char> write;
+		stream << write;
+		EXPECT_EQ(array[0], 'A');
+		EXPECT_EQ(array[1], 'B');
+	}
+	{
+		std::vector<char> array{'A', 'B'};
+		BufferStream stream{array};
+
+		std::vector<char> write{'C', 'D'};
+		stream.write(write);
+		EXPECT_EQ(array[0], 'C');
+		EXPECT_EQ(array[1], 'D');
+	}
+	{
+		std::vector<char> array{'A', 'B'};
+		BufferStream stream{array};
+
+		std::vector<char> write{'C', 'D'};
+		stream << write;
+		EXPECT_EQ(array[0], 'C');
+		EXPECT_EQ(array[1], 'D');
+	}
+	{
+		std::vector<int> array{10, 42};
+		BufferStream stream{array};
+
+		std::vector<int> write{20, 84};
+		stream.write(write);
+		EXPECT_EQ(array[0], 20);
+		EXPECT_EQ(array[1], 84);
+	}
+	{
+		std::vector<int> array{10, 42};
+		BufferStream stream{array};
+
+		std::vector<int> write{20, 84};
+		stream << write;
+		EXPECT_EQ(array[0], 20);
+		EXPECT_EQ(array[1], 84);
+	}
+	{
+		std::vector<int> array{10, 42};
+		BufferStream stream{array};
+
+		std::deque<int> write{20, 84};
+		stream.write(write);
+		EXPECT_EQ(array[0], 20);
+		EXPECT_EQ(array[1], 84);
+	}
+	{
+		std::vector<int> array{10, 42};
+		BufferStream stream{array};
+
+		std::deque<int> write{20, 84};
+		stream << write;
+		EXPECT_EQ(array[0], 20);
+		EXPECT_EQ(array[1], 84);
+	}
+}
+
+TEST(BufferStream, read_span_ref) {
+	{
+		std::vector<char> array{'A', 'B'};
+		BufferStream stream{array};
+
+		std::span<char> read;
+		stream.read(read, 2);
 		EXPECT_EQ(read[0], 'A');
 		EXPECT_EQ(read[1], 'B');
 	}
 	{
-		std::vector<char> array;
+		std::vector<char> array{'A', 'B'};
 		BufferStream stream{array};
 
-		std::vector<char> read;
-		stream << 'A' << 'B';
-		stream.seek(0);
-		stream >> read >> read;
-		EXPECT_EQ(array.size(), 2);
+		std::vector<char> readBacking(2);
+		std::span<char> read{readBacking};
+		stream.read(read);
 		EXPECT_EQ(read[0], 'A');
 		EXPECT_EQ(read[1], 'B');
+		EXPECT_EQ(readBacking[0], 'A');
+		EXPECT_EQ(readBacking[1], 'B');
 	}
 	{
-		std::vector<int> array;
+		std::vector<int> array{10, 42};
 		BufferStream stream{array};
 
-		std::vector<int> read;
-		stream.write(10).write(42).seek(0).read(read, 2);
-		EXPECT_EQ(array.size(), 2);
+		std::span<int> read;
+		stream.read(read, 2);
 		EXPECT_EQ(read[0], 10);
 		EXPECT_EQ(read[1], 42);
 	}
 	{
-		std::vector<int> array;
+		std::vector<int> array{10, 42};
 		BufferStream stream{array};
 
-		std::vector<int> read;
-		stream << 10 << 42;
-		stream.seek(0);
-		stream >> read >> read;
-		EXPECT_EQ(array.size(), 2);
+		std::vector<int> readBacking(2);
+		std::span<int> read{readBacking};
+		stream.read(read);
 		EXPECT_EQ(read[0], 10);
 		EXPECT_EQ(read[1], 42);
+		EXPECT_EQ(readBacking[0], 10);
+		EXPECT_EQ(readBacking[1], 42);
+	}
+}
+
+TEST(BufferStream, write_span_ref) {
+	{
+		std::vector<char> array{'A', 'B'};
+		BufferStream stream{array};
+
+		std::span<char> emptySpan;
+		stream.write(emptySpan);
+		EXPECT_EQ(array[0], 'A');
+		EXPECT_EQ(array[1], 'B');
 	}
 	{
-		std::vector<int> array;
+		std::vector<char> array{'A', 'B'};
 		BufferStream stream{array};
 
-		std::deque<int> read;
-		stream.write(10).write(42).seek(0).read(read, 2);
-		EXPECT_EQ(array.size(), 2);
-		EXPECT_EQ(read[0], 10);
-		EXPECT_EQ(read[1], 42);
+		std::span<char> emptySpan;
+		stream << emptySpan;
+		EXPECT_EQ(array[0], 'A');
+		EXPECT_EQ(array[1], 'B');
 	}
 	{
-		std::vector<int> array;
+		std::vector<char> array{'A', 'B'};
 		BufferStream stream{array};
 
-		std::deque<int> read;
-		stream << 10 << 42;
-		stream.seek(0);
-		stream >> read >> read;
-		EXPECT_EQ(array.size(), 2);
-		EXPECT_EQ(read[0], 10);
-		EXPECT_EQ(read[1], 42);
+		std::vector<char> write{'C', 'D'};
+		std::span<char> writeSpan{write};
+		stream.write(writeSpan);
+		EXPECT_EQ(array[0], 'C');
+		EXPECT_EQ(array[1], 'D');
+	}
+	{
+		std::vector<char> array{'A', 'B'};
+		BufferStream stream{array};
+
+		std::vector<char> write{'C', 'D'};
+		std::span<char> writeSpan{write};
+		stream << writeSpan;
+		EXPECT_EQ(array[0], 'C');
+		EXPECT_EQ(array[1], 'D');
+	}
+	{
+		std::vector<int> array{10, 42};
+		BufferStream stream{array};
+
+		std::vector<int> write{20, 84};
+		std::span<int> writeSpan{write};
+		stream.write(writeSpan);
+		EXPECT_EQ(array[0], 20);
+		EXPECT_EQ(array[1], 84);
+	}
+	{
+		std::vector<int> array{10, 42};
+		BufferStream stream{array};
+
+		std::vector<int> write{20, 84};
+		std::span<int> writeSpan{write};
+		stream << writeSpan;
+		EXPECT_EQ(array[0], 20);
+		EXPECT_EQ(array[1], 84);
 	}
 }
 
@@ -618,6 +730,25 @@ TEST(BufferStream, read_stl_container) {
 		BufferStream stream{podArray};
 
 		auto read = stream.read<std::deque<int>>(2);
+		EXPECT_EQ(read[0], 10);
+		EXPECT_EQ(read[1], 42);
+	}
+}
+
+TEST(BufferStream, read_span) {
+	{
+		std::vector<char> podArray{'A', 'B'};
+		BufferStream stream{podArray};
+
+		auto read = stream.read_span<char>(2);
+		EXPECT_EQ(read[0], 'A');
+		EXPECT_EQ(read[1], 'B');
+	}
+	{
+		std::vector<int> podArray{10, 42};
+		BufferStream stream{podArray};
+
+		auto read = stream.read_span<int>(2);
 		EXPECT_EQ(read[0], 10);
 		EXPECT_EQ(read[1], 42);
 	}
