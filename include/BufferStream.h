@@ -100,19 +100,19 @@ public:
 		return *this;
 	}
 
-	BufferStream& seek(std::size_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
+	BufferStream& seek(std::int64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		if (offsetFrom == std::ios::beg) {
-			if (this->useExceptions && offset > this->bufferLen) {
+			if (this->useExceptions && (offset > this->bufferLen || offset < 0)) {
 				throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 			}
 			this->bufferPos = offset;
 		} else if (offsetFrom == std::ios::cur) {
-			if (this->useExceptions && this->bufferPos + offset > this->bufferLen) {
+			if (this->useExceptions && (this->bufferPos + offset > this->bufferLen || this->bufferPos + offset < 0)) {
 				throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 			}
 			this->bufferPos += offset;
 		} else if (offsetFrom == std::ios::end) {
-			if (this->useExceptions && offset > this->bufferLen) {
+			if (this->useExceptions && (offset > this->bufferLen || offset < 0)) {
 				throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 			}
 			this->bufferPos = this->bufferLen - offset;
