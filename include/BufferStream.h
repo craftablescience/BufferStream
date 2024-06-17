@@ -136,8 +136,8 @@ public:
 		return this->bufferLen;
 	}
 
-	[[nodiscard]] std::byte peek(long offset = 1) const {
-		if (this->useExceptions && offset > this->bufferLen - this->bufferPos) {
+	[[nodiscard]] std::byte peek(std::size_t offset = 1) const {
+		if (this->useExceptions && offset >= this->bufferLen - this->bufferPos) {
 			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 		}
 
