@@ -18,6 +18,10 @@
 template<typename T>
 concept BufferStreamPODType = std::is_trivial_v<T> && std::is_standard_layout_v<T>;
 
+/// For types that must be one byte large, on top of BufferStreamPODType.
+template<typename T>
+concept BufferStreamPODByteType = BufferStreamPODType<T> && sizeof(T) == 1;
+
 /// STL container types that can hold POD type values but can't be used as buffer storage.
 /// Guarantees std::begin(T), std::end(T), and T::size() are defined. T must also hold a POD type.
 template<typename T>
@@ -142,6 +146,11 @@ public:
 		}
 
 		return this->buffer[this->bufferPos + offset];
+	}
+
+	template<BufferStreamPODByteType T>
+	[[nodiscard]] T peek(std::size_t offset = 1) const {
+		return static_cast<T>(this->peek(offset));
 	}
 
 	template<BufferStreamPODType T>

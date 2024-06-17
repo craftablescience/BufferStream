@@ -140,6 +140,16 @@ TEST(BufferStream, peek) {
 	EXPECT_EQ(stream.peek(1), std::byte{'l'});
 	EXPECT_EQ(stream.peek(2), std::byte{'o'});
 	EXPECT_EQ(stream.tell(), 2);
+
+	stream.seek(0);
+	EXPECT_EQ(stream.peek<char>(1), 'e');
+	EXPECT_EQ(stream.peek<char>(2), 'l');
+	EXPECT_EQ(stream.tell(), 0);
+
+	stream.seek(2);
+	EXPECT_EQ(stream.peek<char>(1), 'l');
+	EXPECT_EQ(stream.peek<char>(2), 'o');
+	EXPECT_EQ(stream.tell(), 2);
 }
 
 TEST(BufferStream, read_int_ref) {
