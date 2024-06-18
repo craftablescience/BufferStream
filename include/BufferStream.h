@@ -132,6 +132,14 @@ public:
 		return this->seek(sizeof(T) * n, std::ios::cur);
 	}
 
+	[[nodiscard]] const std::byte* data() const {
+		return this->buffer;
+	}
+
+	[[nodiscard]] std::byte* data() {
+		return this->buffer;
+	}
+
 	[[nodiscard]] std::size_t tell() const {
 		return this->bufferPos;
 	}
