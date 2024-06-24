@@ -20,8 +20,7 @@ public:
 		OPT_CREATE_IF_NONEXISTENT = 1 << 4,
 	};
 
-	explicit FileStream(const std::string& path, int options = OPT_READ)
-			: file() {
+	explicit FileStream(const std::string& path, int options = OPT_READ) {
 		if ((options & OPT_CREATE_IF_NONEXISTENT) && !std::filesystem::exists(path)) {
 			if (!std::filesystem::exists(std::filesystem::path{path}.parent_path())) {
 				std::error_code ec;
@@ -49,37 +48,41 @@ public:
 		this->file.unsetf(std::ios::skipws);
 	}
 
-	FileStream& seekIn(std::fstream::pos_type offset, std::ios::seekdir offsetFrom = std::ios::beg) {
+	[[nodiscard]] explicit operator bool() const {
+		return static_cast<bool>(this->file);
+	}
+
+	FileStream& seek_in(std::fstream::pos_type offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		this->file.seekg(offset, offsetFrom);
 		return *this;
 	}
 
-	FileStream& seekOut(std::fstream::pos_type offset, std::ios::seekdir offsetFrom = std::ios::beg) {
+	FileStream& seek_out(std::fstream::pos_type offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		this->file.seekp(offset, offsetFrom);
 		return *this;
 	}
 
 	template<BufferStreamPODType T = std::byte>
-	FileStream& skipIn(std::size_t n = 1) {
+	FileStream& skip_in(std::size_t n = 1) {
 		if (!n) {
 			return *this;
 		}
-		return this->seekIn(sizeof(T) * n, std::ios::cur);
+		return this->seek_in(sizeof(T) * n, std::ios::cur);
 	}
 
 	template<BufferStreamPODType T = std::byte>
-	FileStream& skipOut(std::size_t n = 1) {
+	FileStream& skip_out(std::size_t n = 1) {
 		if (!n) {
 			return *this;
 		}
-		return this->seekOut(sizeof(T) * n, std::ios::cur);
+		return this->seek_out(sizeof(T) * n, std::ios::cur);
 	}
 
-	[[nodiscard]] std::size_t tellIn() {
+	[[nodiscard]] std::size_t tell_in() {
 		return this->file.tellg();
 	}
 
-	[[nodiscard]] std::size_t tellOut() {
+	[[nodiscard]] std::size_t tell_out() {
 		return this->file.tellp();
 	}
 
@@ -286,7 +289,7 @@ public:
 			char temp = this->read<char>();
 			if (temp == '\0' && stopOnNullTerminator) {
 				// Read the required number of characters and exit
-				this->skipIn<char>(n - i - 1);
+				this->skip_in<char>(n - i - 1);
 				break;
 			}
 			obj += temp;
@@ -336,6 +339,10 @@ public:
 		std::vector<std::byte> out;
 		this->read(out, length);
 		return out;
+	}
+
+	void flush() {
+		this->file.flush();
 	}
 
 protected:

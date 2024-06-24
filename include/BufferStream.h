@@ -94,12 +94,12 @@ public:
 				return reinterpret_cast<std::byte*>(buffer.data());
 			} : ResizeCallback{nullptr}) {}
 
-	BufferStream& setExceptionsEnabled(bool exceptions) {
+	BufferStream& set_exceptions_enabled(bool exceptions) {
 		this->useExceptions = exceptions;
 		return *this;
 	}
 
-	BufferStream& setBigEndian(bool readBigEndian) {
+	BufferStream& set_big_endian(bool readBigEndian) {
 		this->bigEndian = readBigEndian;
 		return *this;
 	}
@@ -172,7 +172,7 @@ public:
 			if constexpr (std::endian::native == std::endian::little) {
 				if (this->bigEndian) {
 					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
-						swapEndian(&obj);
+						swap_endian(&obj);
 					} else {
 						// Just don't swap the bytes...
 						if (this->useExceptions) {
@@ -183,7 +183,7 @@ public:
 			} else if constexpr (std::endian::native == std::endian::big) {
 				if (!this->bigEndian) {
 					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
-						swapEndian(&obj);
+						swap_endian(&obj);
 					} else {
 						// Just don't swap the bytes...
 						if (this->useExceptions) {
@@ -207,7 +207,7 @@ public:
 
 	template<BufferStreamPODType T>
 	BufferStream& write(const T& obj) {
-		if (this->bufferPos + sizeof(T) > this->bufferLen && !this->resizeBuffer(this->bufferPos + sizeof(T)) && this->useExceptions) {
+		if (this->bufferPos + sizeof(T) > this->bufferLen && !this->resize_buffer(this->bufferPos + sizeof(T)) && this->useExceptions) {
 			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
@@ -216,7 +216,7 @@ public:
 			if constexpr (std::endian::native == std::endian::little) {
 				if (this->bigEndian) {
 					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
-						swapEndian(reinterpret_cast<T*>(this->buffer + this->bufferPos));
+						swap_endian(reinterpret_cast<T*>(this->buffer + this->bufferPos));
 					} else {
 						// Just don't swap the bytes...
 						if (this->useExceptions) {
@@ -227,7 +227,7 @@ public:
 			} else if constexpr (std::endian::native == std::endian::big) {
 				if (!this->bigEndian) {
 					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
-						swapEndian(reinterpret_cast<T*>(this->buffer + this->bufferPos));
+						swap_endian(reinterpret_cast<T*>(this->buffer + this->bufferPos));
 					} else {
 						// Just don't swap the bytes...
 						if (this->useExceptions) {
@@ -273,7 +273,7 @@ public:
 
 	template<BufferStreamPODType T, std::size_t N>
 	BufferStream& write(const T(&obj)[N]) {
-		if (this->bufferPos + sizeof(T) * N > this->bufferLen && !this->resizeBuffer(this->bufferPos + sizeof(T) * N) && this->useExceptions) {
+		if (this->bufferPos + sizeof(T) * N > this->bufferLen && !this->resize_buffer(this->bufferPos + sizeof(T) * N) && this->useExceptions) {
 			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
@@ -314,7 +314,7 @@ public:
 
 	template<BufferStreamPODType T, std::size_t M, std::size_t N>
 	BufferStream& write(const T(&obj)[M][N]) {
-		if (this->bufferPos + sizeof(T) * M * N > this->bufferLen && !this->resizeBuffer(this->bufferPos + sizeof(T) * M * N) && this->useExceptions) {
+		if (this->bufferPos + sizeof(T) * M * N > this->bufferLen && !this->resize_buffer(this->bufferPos + sizeof(T) * M * N) && this->useExceptions) {
 			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
@@ -355,7 +355,7 @@ public:
 
 	template<BufferStreamPODType T, std::size_t N>
 	BufferStream& write(const std::array<T, N>& obj) {
-		if (this->bufferPos + sizeof(T) * N > this->bufferLen && !this->resizeBuffer(this->bufferPos + sizeof(T) * N) && this->useExceptions) {
+		if (this->bufferPos + sizeof(T) * N > this->bufferLen && !this->resize_buffer(this->bufferPos + sizeof(T) * N) && this->useExceptions) {
 			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
@@ -412,7 +412,7 @@ public:
 
 	template<BufferStreamPossiblyNonContiguousResizableContainer T>
 	BufferStream& write(const T& obj) {
-		if (this->bufferPos + sizeof(typename T::value_type) * obj.size() > this->bufferLen && !this->resizeBuffer(this->bufferPos + sizeof(typename T::value_type) * obj.size()) && this->useExceptions) {
+		if (this->bufferPos + sizeof(typename T::value_type) * obj.size() > this->bufferLen && !this->resize_buffer(this->bufferPos + sizeof(typename T::value_type) * obj.size()) && this->useExceptions) {
 			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
@@ -491,7 +491,7 @@ public:
 
 	template<BufferStreamPODType T>
 	BufferStream& write(const std::span<T>& obj) {
-		if (this->bufferPos + sizeof(T) * obj.size() > this->bufferLen && !this->resizeBuffer(this->bufferPos + sizeof(T) * obj.size()) && this->useExceptions) {
+		if (this->bufferPos + sizeof(T) * obj.size() > this->bufferLen && !this->resize_buffer(this->bufferPos + sizeof(T) * obj.size()) && this->useExceptions) {
 			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
@@ -531,7 +531,7 @@ public:
 
 	BufferStream& write(const std::string& obj, bool addNullTerminator = true, std::size_t maxSize = 0) {
 		auto stringByteSize = maxSize == 0 ? (sizeof(typename std::string::value_type) * obj.size() + (addNullTerminator ? sizeof(typename std::string::value_type) : 0)) : maxSize;
-		if (this->bufferPos + stringByteSize > this->bufferLen && !this->resizeBuffer(this->bufferPos + stringByteSize) && this->useExceptions) {
+		if (this->bufferPos + stringByteSize > this->bufferLen && !this->resize_buffer(this->bufferPos + stringByteSize) && this->useExceptions) {
 			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
@@ -646,7 +646,7 @@ protected:
 	static inline constexpr const char* OVERFLOW_WRITE_ERROR_MESSAGE = "Attempted to write value out of buffer bounds!";
 	static inline constexpr const char* BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE = "Cannot change endianness of complex types!";
 
-	[[nodiscard]] bool resizeBuffer(std::size_t newLen) {
+	[[nodiscard]] bool resize_buffer(std::size_t newLen) {
 		if (!this->bufferResizeCallback) {
 			return false;
 		}
@@ -656,7 +656,7 @@ protected:
 	}
 
 	template<BufferStreamPODType T>
-	static constexpr void swapEndian(T* t) {
+	static constexpr void swap_endian(T* t) {
 		union {
 			T t;
 			std::byte bytes[sizeof(T)];
