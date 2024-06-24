@@ -124,6 +124,10 @@ public:
 		return *this;
 	}
 
+	BufferStream& seek_u(std::uint64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
+		return this->seek(static_cast<std::int64_t>(offset), offsetFrom);
+	}
+
 	template<BufferStreamPODType T = std::byte>
 	BufferStream& skip(std::size_t n = 1) {
 		if (!n) {

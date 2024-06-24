@@ -52,14 +52,22 @@ public:
 		return static_cast<bool>(this->file);
 	}
 
-	FileStream& seek_in(std::fstream::pos_type offset, std::ios::seekdir offsetFrom = std::ios::beg) {
+	FileStream& seek_in(std::int64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		this->file.seekg(offset, offsetFrom);
 		return *this;
 	}
 
-	FileStream& seek_out(std::fstream::pos_type offset, std::ios::seekdir offsetFrom = std::ios::beg) {
+	FileStream& seek_in_u(std::uint64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
+		return this->seek_in(static_cast<std::int64_t>(offset), offsetFrom);
+	}
+
+	FileStream& seek_out(std::int64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		this->file.seekp(offset, offsetFrom);
 		return *this;
+	}
+
+	FileStream& seek_out_u(std::uint64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
+		return this->seek_out(static_cast<std::int64_t>(offset), offsetFrom);
 	}
 
 	template<BufferStreamPODType T = std::byte>
