@@ -386,7 +386,7 @@ public:
 			return *this;
 		}
 
-		if constexpr (sizeof(T) == 1 && BufferStreamResizableContiguousContainer<T>) {
+		if constexpr (sizeof(typename T::value_type) == 1 && BufferStreamResizableContiguousContainer<T>) {
 			obj.resize(n);
 			std::memcpy(obj.data(), this->buffer + this->bufferPos, n);
 			this->bufferPos += n;
@@ -420,7 +420,7 @@ public:
 			return *this;
 		}
 
-		if constexpr (sizeof(T) == 1 && (BufferStreamNonResizableContiguousContainer<T> || BufferStreamResizableContiguousContainer<T>)) {
+		if constexpr (sizeof(typename T::value_type) == 1 && (BufferStreamNonResizableContiguousContainer<T> || BufferStreamResizableContiguousContainer<T>)) {
 			std::memcpy(this->buffer + this->bufferPos, obj.data(), obj.size());
 			this->bufferPos += obj.size();
 		} else {
