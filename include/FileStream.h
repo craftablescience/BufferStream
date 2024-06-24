@@ -219,7 +219,7 @@ public:
 		}
 
 		if constexpr (BufferStreamNonResizableContiguousContainer<T> || BufferStreamResizableContiguousContainer<T>) {
-			this->file.write(reinterpret_cast<const char*>(obj.data()), sizeof(T::value_type) * obj.size());
+			this->file.write(reinterpret_cast<const char*>(obj.data()), sizeof(typename T::value_type) * obj.size());
 		} else {
 			for (int i = 0; i < obj.size(); i++) {
 				this->write(obj[i]);
