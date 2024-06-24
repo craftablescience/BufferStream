@@ -110,7 +110,7 @@ public:
 
 	template<BufferStreamPODType T, std::size_t N>
 	FileStream& read(T(&obj)[N]) {
-		this->file.read(reinterpret_cast<char*>(obj), sizeof(T) * N);
+		this->file.read(reinterpret_cast<char*>(&obj[0]), sizeof(T) * N);
 		return *this;
 	}
 
@@ -121,7 +121,7 @@ public:
 
 	template<BufferStreamPODType T, std::size_t N>
 	FileStream& write(const T(&obj)[N]) {
-		this->file.write(reinterpret_cast<const char*>(obj), sizeof(T) * N);
+		this->file.write(reinterpret_cast<const char*>(&obj[0]), sizeof(T) * N);
 		return *this;
 	}
 
