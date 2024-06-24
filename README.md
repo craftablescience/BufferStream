@@ -188,7 +188,7 @@ the stream state will not be modified. This behavior can be disabled:
 std::vector<std::byte> buffer{{}}; // size 1
 BufferStream stream{buffer};
 
-stream.setExceptionsEnabled(false);
+stream.set_exceptions_enabled(false);
 stream.read<std::int32_t>(); // Won't throw an exception, but don't ever do this please - it's UB
 ```
 
@@ -199,7 +199,7 @@ if exceptions are enabled `std::invalid_argument` will be thrown:
 ```cpp
 int x = 0xAB'CD'EF'00;
 BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(int)};
-stream.setBigEndian(true);
+stream.set_big_endian(true);
 stream.read<int>(); // 0x00'EF'CD'AB
 
 struct Vector {
@@ -233,4 +233,11 @@ buffer.resize(stream.size());
 ...
 // It may also be convenient to copy the data to a new container
 std::vector<std::byte> newData = stream.seek(0).read_bytes(stream.size());
+```
+
+Files can be opened using the `FileStream` class. Keep in mind this was created for convenience,
+and realistically the `BufferStream` class is better for many more use cases. See the comment at
+the top of the header for a more complete list of missing features compared to `BufferStream`.
+```cpp
+FileStream stream{"path/to/file.bin"};
 ```
