@@ -8,7 +8,8 @@ option(BUFFERSTREAM_BUILD_TESTS "Build tests" OFF)
 
 # Create library
 add_library(${PROJECT_NAME} INTERFACE
-        "${CMAKE_CURRENT_SOURCE_DIR}/include/BufferStream.h")
+        "${CMAKE_CURRENT_SOURCE_DIR}/include/BufferStream.h"
+        "${CMAKE_CURRENT_SOURCE_DIR}/include/FileStream.h")
 
 target_include_directories(${PROJECT_NAME} INTERFACE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
