@@ -7,7 +7,7 @@
 
 /**
  * This class is provided for convenience, but use BufferStream if you can.
- * It has more features, like peek, big-endian support, reading to a std::span, etc.
+ * It has more features, like peek offset, big-endian support, reading to a std::span, etc.
  * This class also has no tests because I was lazy.
  */
 class FileStream {
@@ -92,6 +92,15 @@ public:
 
 	[[nodiscard]] std::size_t tell_out() {
 		return this->file.tellp();
+	}
+
+	[[nodiscard]] std::byte peek() {
+		return static_cast<std::byte>(this->file.peek());
+	}
+
+	template<BufferStreamPODByteType T>
+	[[nodiscard]] T peek() {
+		return static_cast<T>(this->peek());
 	}
 
 	template<BufferStreamPODType T>

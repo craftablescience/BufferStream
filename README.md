@@ -152,7 +152,7 @@ stream.tell(); // Returns 2
 
 Peek can read a byte from an offset relative to the cursor without advancing the cursor:
 ```cpp
-stream.peek(); // Returns byte just ahead of the cursor
+stream.peek(); // Returns byte currently at the cursor
 stream.peek(2); // Returns byte 2 bytes ahead of the cursor
 ```
 

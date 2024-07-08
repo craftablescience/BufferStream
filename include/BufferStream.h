@@ -152,7 +152,7 @@ public:
 		return this->bufferLen;
 	}
 
-	[[nodiscard]] std::byte peek(std::size_t offset = 1) const {
+	[[nodiscard]] std::byte peek(std::size_t offset = 0) const {
 		if (this->useExceptions && offset >= this->bufferLen - this->bufferPos) {
 			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 		}
@@ -161,7 +161,7 @@ public:
 	}
 
 	template<BufferStreamPODByteType T>
-	[[nodiscard]] T peek(std::size_t offset = 1) const {
+	[[nodiscard]] T peek(std::size_t offset = 0) const {
 		return static_cast<T>(this->peek(offset));
 	}
 
