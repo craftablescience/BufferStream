@@ -71,7 +71,7 @@ public:
 	}
 
 	template<BufferStreamPODType T = std::byte>
-	FileStream& skip_in(std::size_t n = 1) {
+	FileStream& skip_in(std::int64_t n = 1) {
 		if (!n) {
 			return *this;
 		}
@@ -79,11 +79,21 @@ public:
 	}
 
 	template<BufferStreamPODType T = std::byte>
-	FileStream& skip_out(std::size_t n = 1) {
+	FileStream& skip_in_u(std::uint64_t n = 1) {
+		return this->skip_in(static_cast<std::int64_t>(n));
+	}
+
+	template<BufferStreamPODType T = std::byte>
+	FileStream& skip_out(std::int64_t n = 1) {
 		if (!n) {
 			return *this;
 		}
 		return this->seek_out(sizeof(T) * n, std::ios::cur);
+	}
+
+	template<BufferStreamPODType T = std::byte>
+	FileStream& skip_out_u(std::uint64_t n = 1) {
+		return this->skip_out(static_cast<std::int64_t>(n));
 	}
 
 	[[nodiscard]] std::size_t tell_in() {
