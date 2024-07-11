@@ -125,6 +125,9 @@ TEST(BufferStream, skip) {
 
 	stream.skip<std::int16_t>(1);
 	EXPECT_EQ(stream.tell(), 3 + sizeof(std::int16_t));
+
+	stream.skip<std::int16_t>(-1);
+	EXPECT_EQ(stream.tell(), 3);
 }
 
 TEST(BufferStream, peek) {

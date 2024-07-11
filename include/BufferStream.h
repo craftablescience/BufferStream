@@ -129,11 +129,16 @@ public:
 	}
 
 	template<BufferStreamPODType T = std::byte>
-	BufferStream& skip(std::size_t n = 1) {
+	BufferStream& skip(std::int64_t n = 1) {
 		if (!n) {
 			return *this;
 		}
 		return this->seek(sizeof(T) * n, std::ios::cur);
+	}
+
+	template<BufferStreamPODType T = std::byte>
+	BufferStream& skip_u(std::uint64_t n = 1) {
+		return this->skip(static_cast<std::int64_t>(n));
 	}
 
 	[[nodiscard]] const std::byte* data() const {
@@ -152,7 +157,7 @@ public:
 		return this->bufferLen;
 	}
 
-	[[nodiscard]] std::byte peek(std::size_t offset = 0) const {
+	[[nodiscard]] std::byte peek(std::int64_t offset = 0) const {
 		if (this->useExceptions && offset >= this->bufferLen - this->bufferPos) {
 			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 		}
@@ -160,9 +165,18 @@ public:
 		return this->buffer[this->bufferPos + offset];
 	}
 
+	[[nodiscard]] std::byte peek_u(std::uint64_t offset = 0) const {
+		return this->peek(static_cast<std::int64_t>(offset));
+	}
+
 	template<BufferStreamPODByteType T>
-	[[nodiscard]] T peek(std::size_t offset = 0) const {
+	[[nodiscard]] T peek(std::int64_t offset = 0) const {
 		return static_cast<T>(this->peek(offset));
+	}
+
+	template<BufferStreamPODByteType T>
+	[[nodiscard]] T peek_u(std::uint64_t offset = 0) const {
+		return static_cast<T>(this->peek_u(offset));
 	}
 
 	template<BufferStreamPODType T>
@@ -571,7 +585,7 @@ public:
 			char temp = this->read<char>();
 			if (temp == '\0' && stopOnNullTerminator) {
 				// Read the required number of characters and exit
-				this->skip<char>(n - i - 1);
+				this->skip_u<char>(n - i - 1);
 				break;
 			}
 			obj += temp;
