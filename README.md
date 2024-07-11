@@ -165,6 +165,20 @@ stream.skip<std::uint16_t>(); // Skips 2 bytes (uint16 is 2 bytes wide)
 stream.skip<std::uint16_t>(2); // Skips 4 bytes (uint16 is 2 bytes wide)
 ```
 
+Every seek method has a corresponding unsigned variant for convenience.
+Use these methods if you are getting warnings implicitly casting a `uint64_t` to `int64_t`:
+
+```cpp
+stream.seek(-1, std::ios::cur); // Seek 1 byte backward
+stream.seek_u(1u, std::ios::cur); // Seek 1 byte forward
+
+stream.peek(-2); // Returns byte 2 bytes before the cursor
+stream.peek_u(2u); // Returns byte 2 bytes after the cursor
+
+stream.skip(-2); // Skips 2 bytes backward (equivalent to stream.seek(-2, std::ios::cur))
+stream.skip_u(2u); // Skips 2 bytes forward (equivalent to stream.seek_u(2u, std::ios::cur))
+```
+
 ### Miscellaneous
 
 Methods that accept a reference or otherwise have no useful return value may be chained:
@@ -214,8 +228,10 @@ stream >> vec.x >> vec.y; // Correct
 ```
 
 When writing to a std container, the stream will automatically resize the container by
-powers of two when it needs more space. This can be disabled by adding an argument to
-the constructor:
+powers of two when it needs more space. **Keep in mind if you are reading spans or views
+over the data in the stream, they will be invalidated if the container is resized!**
+Automatic resizing on writes that would otherwise exceed the capacity of the container
+can be disabled by adding an argument to the constructor:
 ```cpp
 std::vector<std::byte> buffer(32);
 BufferStream stream{buffer, false};
