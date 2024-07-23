@@ -548,16 +548,17 @@ public:
 	}
 
 	BufferStream& write(const std::string& obj, bool addNullTerminator = true, std::size_t maxSize = 0) {
-		auto stringByteSize = maxSize == 0 ? (sizeof(typename std::string::value_type) * obj.size() + (addNullTerminator ? sizeof(typename std::string::value_type) : 0)) : maxSize;
-		if (this->bufferPos + stringByteSize > this->bufferLen && !this->resize_buffer(this->bufferPos + stringByteSize) && this->useExceptions) {
+		static_assert(sizeof(typename std::string::value_type) == 1, "String char width must be 1 byte!");
+
+		if (maxSize == 0) {
+			maxSize = obj.size() + addNullTerminator;
+		}
+		if (this->bufferPos + maxSize > this->bufferLen && !this->resize_buffer(this->bufferPos + maxSize) && this->useExceptions) {
 			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
-		if (maxSize == 0) {
-			maxSize = obj.size() + 1;
-		}
 		for (std::size_t i = 0; i < maxSize; i++) {
-			if (i < obj.size() && !(addNullTerminator && i == maxSize - 1)) {
+			if (i < obj.size()) {
 				this->write(obj[i]);
 			} else {
 				this->write('\0');

@@ -288,11 +288,13 @@ public:
 	}
 
 	FileStream& write(const std::string& obj, bool addNullTerminator = true, std::size_t maxSize = 0) {
+		static_assert(sizeof(typename std::string::value_type) == 1, "String char width must be 1 byte!");
+
 		if (maxSize == 0) {
-			maxSize = obj.size() + 1;
+			maxSize = obj.size() + addNullTerminator;
 		}
 		for (std::size_t i = 0; i < maxSize; i++) {
-			if (i < obj.size() && !(addNullTerminator && i == maxSize - 1)) {
+			if (i < obj.size()) {
 				this->write(obj[i]);
 			} else {
 				this->write('\0');
