@@ -12,6 +12,7 @@
 #include <stdexcept>
 #include <string>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 /// Only POD types are directly readable from the stream.
@@ -83,7 +84,7 @@ public:
 
 	template<BufferStreamResizableContiguousContainer T>
 	explicit BufferStream(T& buffer, bool resizable = true)
-			: BufferStream(buffer.data(), buffer.size() * sizeof(typename T::value_type), resizable ? [&buffer](BufferStream* stream, std::size_t newLen) {
+			: BufferStream(buffer.data(), buffer.size() * sizeof(typename T::value_type), resizable ? [&buffer](BufferStream*, std::size_t newLen) {
 				while (buffer.size() * sizeof(typename T::value_type) < newLen) {
 					if (buffer.size() == 0) {
 						buffer.resize(1);
@@ -106,17 +107,17 @@ public:
 
 	BufferStream& seek(std::int64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		if (offsetFrom == std::ios::beg) {
-			if (this->useExceptions && (offset > this->bufferLen || offset < 0)) {
+			if (this->useExceptions && (std::cmp_greater(offset, this->bufferLen) || offset < 0)) {
 				throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 			}
 			this->bufferPos = offset;
 		} else if (offsetFrom == std::ios::cur) {
-			if (this->useExceptions && (this->bufferPos + offset > this->bufferLen || this->bufferPos + offset < 0)) {
+			if (this->useExceptions && (std::cmp_greater(this->bufferPos + offset, this->bufferLen) || this->bufferPos + offset < 0)) {
 				throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 			}
 			this->bufferPos += offset;
 		} else if (offsetFrom == std::ios::end) {
-			if (this->useExceptions && (offset > this->bufferLen || offset < 0)) {
+			if (this->useExceptions && (std::cmp_greater(offset, this->bufferLen) || offset < 0)) {
 				throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 			}
 			this->bufferPos = this->bufferLen - offset;
@@ -158,7 +159,7 @@ public:
 	}
 
 	[[nodiscard]] std::byte peek(std::int64_t offset = 0) const {
-		if (this->useExceptions && offset >= this->bufferLen - this->bufferPos) {
+		if (this->useExceptions && std::cmp_greater_equal(offset, this->bufferLen - this->bufferPos)) {
 			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 		}
 
