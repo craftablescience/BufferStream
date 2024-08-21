@@ -96,11 +96,11 @@ public:
 		return this->skip_out(static_cast<std::int64_t>(n));
 	}
 
-	[[nodiscard]] std::size_t tell_in() {
+	[[nodiscard]] std::uint64_t tell_in() {
 		return this->file.tellg();
 	}
 
-	[[nodiscard]] std::size_t tell_out() {
+	[[nodiscard]] std::uint64_t tell_out() {
 		return this->file.tellp();
 	}
 
@@ -135,29 +135,29 @@ public:
 		return this->write(obj);
 	}
 
-	template<BufferStreamPODType T, std::size_t N>
+	template<BufferStreamPODType T, std::uint64_t N>
 	FileStream& read(T(&obj)[N]) {
 		this->file.read(reinterpret_cast<char*>(&obj[0]), sizeof(T) * N);
 		return *this;
 	}
 
-	template<BufferStreamPODType T, std::size_t N>
+	template<BufferStreamPODType T, std::uint64_t N>
 	FileStream& operator>>(T(&obj)[N]) {
 		return this->read(obj);
 	}
 
-	template<BufferStreamPODType T, std::size_t N>
+	template<BufferStreamPODType T, std::uint64_t N>
 	FileStream& write(const T(&obj)[N]) {
 		this->file.write(reinterpret_cast<const char*>(&obj[0]), sizeof(T) * N);
 		return *this;
 	}
 
-	template<BufferStreamPODType T, std::size_t N>
+	template<BufferStreamPODType T, std::uint64_t N>
 	FileStream& operator<<(const T(&obj)[N]) {
 		return this->write(obj);
 	}
 
-	template<BufferStreamPODType T, std::size_t M, std::size_t N>
+	template<BufferStreamPODType T, std::uint64_t M, std::uint64_t N>
 	FileStream& read(T(&obj)[M][N]) {
 		for (int i = 0; i < M; i++) {
 			for (int j = 0; j < N; j++) {
@@ -167,12 +167,12 @@ public:
 		return *this;
 	}
 
-	template<BufferStreamPODType T, std::size_t M, std::size_t N>
+	template<BufferStreamPODType T, std::uint64_t M, std::uint64_t N>
 	FileStream& operator>>(T(&obj)[M][N]) {
 		return this->read(obj);
 	}
 
-	template<BufferStreamPODType T, std::size_t M, std::size_t N>
+	template<BufferStreamPODType T, std::uint64_t M, std::uint64_t N>
 	FileStream& write(const T(&obj)[M][N]) {
 		for (int i = 0; i < M; i++) {
 			for (int j = 0; j < N; j++) {
@@ -182,35 +182,35 @@ public:
 		return *this;
 	}
 
-	template<BufferStreamPODType T, std::size_t M, std::size_t N>
+	template<BufferStreamPODType T, std::uint64_t M, std::uint64_t N>
 	FileStream& operator<<(const T(&obj)[M][N]) {
 		return this->write(obj);
 	}
 
-	template<BufferStreamPODType T, std::size_t N>
+	template<BufferStreamPODType T, std::uint64_t N>
 	FileStream& read(std::array<T, N>& obj) {
 		this->file.read(reinterpret_cast<char*>(obj.data()), sizeof(T) * N);
 		return *this;
 	}
 
-	template<BufferStreamPODType T, std::size_t N>
+	template<BufferStreamPODType T, std::uint64_t N>
 	FileStream& operator>>(std::array<T, N>& obj) {
 		return this->read(obj);
 	}
 
-	template<BufferStreamPODType T, std::size_t N>
+	template<BufferStreamPODType T, std::uint64_t N>
 	FileStream& write(const std::array<T, N>& obj) {
 		this->file.write(reinterpret_cast<const char*>(obj.data()), sizeof(T) * N);
 		return *this;
 	}
 
-	template<BufferStreamPODType T, std::size_t N>
+	template<BufferStreamPODType T, std::uint64_t N>
 	FileStream& operator<<(const std::array<T, N>& obj) {
 		return this->write(obj);
 	}
 
 	template<BufferStreamPossiblyNonContiguousResizableContainer T>
-	FileStream& read(T& obj, std::size_t n) {
+	FileStream& read(T& obj, std::uint64_t n) {
 		obj.clear();
 		if (!n) {
 			return *this;
@@ -220,7 +220,7 @@ public:
 			obj.resize(n);
 			this->file.read(reinterpret_cast<char*>(obj.data()), sizeof(typename T::value_type) * n);
 		} else {
-			// BufferStreamPossiblyNonContiguousResizableContainer doesn't guarantee T::reserve(std::size_t) exists!
+			// BufferStreamPossiblyNonContiguousResizableContainer doesn't guarantee T::reserve(std::uint64_t) exists!
 			if constexpr (requires([[maybe_unused]] T& t) {
 				{t.reserve(1)} -> std::same_as<void>;
 			}) {
@@ -287,13 +287,13 @@ public:
 		return this->read(obj);
 	}
 
-	FileStream& write(const std::string& obj, bool addNullTerminator = true, std::size_t maxSize = 0) {
+	FileStream& write(const std::string& obj, bool addNullTerminator = true, std::uint64_t maxSize = 0) {
 		static_assert(sizeof(typename std::string::value_type) == 1, "String char width must be 1 byte!");
 
 		if (maxSize == 0) {
 			maxSize = obj.size() + addNullTerminator;
 		}
-		for (std::size_t i = 0; i < maxSize; i++) {
+		for (std::uint64_t i = 0; i < maxSize; i++) {
 			if (i < obj.size()) {
 				this->write(obj[i]);
 			} else {
@@ -307,7 +307,7 @@ public:
 		return this->write(obj);
 	}
 
-	FileStream& read(std::string& obj, std::size_t n, bool stopOnNullTerminator = true) {
+	FileStream& read(std::string& obj, std::uint64_t n, bool stopOnNullTerminator = true) {
 		obj.clear();
 		if (!n) {
 			return *this;
@@ -318,7 +318,7 @@ public:
 			char temp = this->read<char>();
 			if (temp == '\0' && stopOnNullTerminator) {
 				// Read the required number of characters and exit
-				this->skip_in<char>(n - i - 1);
+				this->skip_in_u<char>(n - i - 1);
 				break;
 			}
 			obj += temp;
@@ -333,7 +333,7 @@ public:
 		return obj;
 	}
 
-	template<BufferStreamPODType T, std::size_t N>
+	template<BufferStreamPODType T, std::uint64_t N>
 	std::array<T, N> read() {
 		std::array<T, N> obj{};
 		this->read(obj);
@@ -341,7 +341,7 @@ public:
 	}
 
 	template<BufferStreamPossiblyNonContiguousResizableContainer T>
-	T read(std::size_t n) {
+	T read(std::uint64_t n) {
 		T obj{};
 		this->read(obj, n);
 		return obj;
@@ -353,18 +353,18 @@ public:
 		return out;
 	}
 
-	[[nodiscard]] std::string read_string(std::size_t n, bool stopOnNullTerminator = true) {
+	[[nodiscard]] std::string read_string(std::uint64_t n, bool stopOnNullTerminator = true) {
 		std::string out;
 		this->read(out, n, stopOnNullTerminator);
 		return out;
 	}
 
-	template<std::size_t L>
+	template<std::uint64_t L>
 	[[nodiscard]] std::array<std::byte, L> read_bytes() {
 		return this->read<std::array<std::byte, L>>();
 	}
 
-	[[nodiscard]] std::vector<std::byte> read_bytes(std::size_t length) {
+	[[nodiscard]] std::vector<std::byte> read_bytes(std::uint64_t length) {
 		std::vector<std::byte> out;
 		this->read(out, length);
 		return out;
