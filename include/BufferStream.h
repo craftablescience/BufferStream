@@ -455,6 +455,48 @@ public:
 	}
 
 	template<BufferStreamPODType T>
+	BufferStream& read(T* obj, std::uint64_t n) {
+		if (this->useExceptions && this->bufferPos + sizeof(T) * n > this->bufferLen) {
+			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+		}
+
+		if (!n) {
+			return *this;
+		}
+
+		if constexpr (BufferStreamPODByteType<T>) {
+			std::memcpy(obj, this->buffer + this->bufferPos, n);
+			this->bufferPos += n;
+		} else {
+			for (std::uint64_t i = 0; i < n; i++) {
+				obj[i] = this->read<T>();
+			}
+		}
+		return *this;
+	}
+
+	template<BufferStreamPODType T>
+	BufferStream& write(const T* obj, std::uint64_t n) {
+		if (this->bufferPos + sizeof(T) * n > this->bufferLen && !this->resize_buffer(this->bufferPos + sizeof(T) * n) && this->useExceptions) {
+			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
+		}
+
+		if (!n) {
+			return *this;
+		}
+
+		if constexpr (BufferStreamPODByteType<T> && (BufferStreamNonResizableContiguousContainer<T> || BufferStreamResizableContiguousContainer<T>)) {
+			std::memcpy(this->buffer + this->bufferPos, obj, n);
+			this->bufferPos += n;
+		} else {
+			for (std::uint64_t i = 0; i < n; i++) {
+				this->write(obj[i]);
+			}
+		}
+		return *this;
+	}
+
+	template<BufferStreamPODType T>
 	BufferStream& read(std::span<T>& obj) {
 		if (this->useExceptions && this->bufferPos + sizeof(T) * obj.size() > this->bufferLen) {
 			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};

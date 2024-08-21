@@ -57,7 +57,7 @@ TEST(BufferStream, read_big_endian) {
 	}
 	{
 		std::uint32_t x = 0xAB'CD'EF'00;
-		BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
+		BufferStream stream{&x, 1};
 
 		auto y = stream.set_big_endian(true).read<std::uint32_t>();
 		EXPECT_EQ(y, 0x00'EF'CD'AB);
@@ -74,7 +74,7 @@ TEST(BufferStream, write_big_endian) {
 	}
 	{
 		std::uint32_t x = 0;
-		BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
+		BufferStream stream{&x, 1};
 
 		stream.set_big_endian(true).write(0xAB'CD'EF'00).set_big_endian(false).seek(0);
 		EXPECT_EQ(stream.read<std::uint32_t>(), 0x00'EF'CD'AB);
@@ -158,7 +158,7 @@ TEST(BufferStream, peek) {
 TEST(BufferStream, read_int_ref) {
 	{
 		int x = 10;
-		BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
+		BufferStream stream{&x, 1};
 
 		int y = 0;
 		stream.read(y);
@@ -166,7 +166,7 @@ TEST(BufferStream, read_int_ref) {
 	}
 	{
 		int x = 10;
-		BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
+		BufferStream stream{&x, 1};
 
 		int y = 0;
 		stream >> y;
@@ -177,14 +177,14 @@ TEST(BufferStream, read_int_ref) {
 TEST(BufferStream, write_int_ref) {
 	{
 		int x = 10;
-		BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
+		BufferStream stream{&x, 1};
 
 		int y = 0;
 		EXPECT_EQ(stream.write(y).seek(0).read<int>(), y);
 	}
 	{
 		int x = 10;
-		BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
+		BufferStream stream{&x, 1};
 
 		int y = 0;
 		stream << y;
@@ -195,7 +195,7 @@ TEST(BufferStream, write_int_ref) {
 TEST(BufferStream, read_pod_ref) {
 	{
 		POD pod{10, 42};
-		BufferStream stream{reinterpret_cast<std::byte*>(&pod), sizeof(pod)};
+		BufferStream stream{&pod, 1};
 
 		POD read{};
 		stream.read(read);
@@ -204,7 +204,7 @@ TEST(BufferStream, read_pod_ref) {
 	}
 	{
 		POD pod{10, 42};
-		BufferStream stream{reinterpret_cast<std::byte*>(&pod), sizeof(pod)};
+		BufferStream stream{&pod, 1};
 
 		POD read{};
 		stream >> read;
@@ -216,7 +216,7 @@ TEST(BufferStream, read_pod_ref) {
 TEST(BufferStream, write_pod_ref) {
 	{
 		POD pod{10, 42};
-		BufferStream stream{reinterpret_cast<std::byte*>(&pod), sizeof(pod)};
+		BufferStream stream{&pod, 1};
 
 		stream.write(POD{20, 84});
 		auto read = stream.seek(0).read<POD>();
@@ -225,7 +225,7 @@ TEST(BufferStream, write_pod_ref) {
 	}
 	{
 		POD pod{10, 42};
-		BufferStream stream{reinterpret_cast<std::byte*>(&pod), sizeof(pod)};
+		BufferStream stream{&pod, 1};
 
 		stream << POD{20, 84};
 		auto read = stream.seek(0).read<POD>();
@@ -237,7 +237,7 @@ TEST(BufferStream, write_pod_ref) {
 TEST(BufferStream, read_c_array_ref) {
 	{
 		POD podArray[] = {{10, 42}, {20, 84}};
-		BufferStream stream{reinterpret_cast<std::byte*>(podArray), sizeof(POD) * 2};
+		BufferStream stream{podArray};
 
 		POD read[] = {{0, 0}, {0, 0}};
 		stream.read(read);
@@ -248,7 +248,7 @@ TEST(BufferStream, read_c_array_ref) {
 	}
 	{
 		POD podArray[2] = {{10, 42}, {20, 84}};
-		BufferStream stream{reinterpret_cast<std::byte*>(podArray), sizeof(POD) * 2};
+		BufferStream stream{podArray};
 
 		POD read[2] = {{0, 0}, {0, 0}};
 		stream >> read;
@@ -259,7 +259,7 @@ TEST(BufferStream, read_c_array_ref) {
 	}
 	{
 		POD podArray[1][2] = {{{10, 42}, {20, 84}}};
-		BufferStream stream{reinterpret_cast<std::byte*>(podArray), sizeof(POD) * 1 * 2};
+		BufferStream stream{podArray};
 
 		POD read[1][2] = {{{10, 42}, {20, 84}}};
 		stream.read(read);
@@ -270,7 +270,7 @@ TEST(BufferStream, read_c_array_ref) {
 	}
 	{
 		POD podArray[1][2] = {{{10, 42}, {20, 84}}};
-		BufferStream stream{reinterpret_cast<std::byte*>(podArray), sizeof(POD) * 1 * 2};
+		BufferStream stream{podArray};
 
 		POD read[1][2] = {{{10, 42}, {20, 84}}};
 		stream >> read;
@@ -284,7 +284,7 @@ TEST(BufferStream, read_c_array_ref) {
 TEST(BufferStream, write_c_array_ref) {
 	{
 		POD podArray[] = {{10, 42}, {20, 84}};
-		BufferStream stream{reinterpret_cast<std::byte*>(podArray), sizeof(POD) * 2};
+		BufferStream stream{podArray};
 
 		POD write[] = {{20, 84}, {40, 168}};
 		POD read[] = {{0, 0}, {0, 0}};
@@ -296,7 +296,7 @@ TEST(BufferStream, write_c_array_ref) {
 	}
 	{
 		POD podArray[2] = {{10, 42}, {20, 84}};
-		BufferStream stream{reinterpret_cast<std::byte*>(podArray), sizeof(POD) * 2};
+		BufferStream stream{podArray};
 
 		POD write[] = {{20, 84}, {40, 168}};
 		POD read[] = {{0, 0}, {0, 0}};
@@ -310,7 +310,7 @@ TEST(BufferStream, write_c_array_ref) {
 	}
 	{
 		POD podArray[1][2] = {{{10, 42}, {20, 84}}};
-		BufferStream stream{reinterpret_cast<std::byte*>(podArray), sizeof(POD) * 1 * 2};
+		BufferStream stream{podArray};
 
 		POD write[1][2] = {{{20, 84}, {40, 168}}};
 		POD read[1][2] = {{{0, 0}, {0, 0}}};
@@ -322,7 +322,7 @@ TEST(BufferStream, write_c_array_ref) {
 	}
 	{
 		POD podArray[1][2] = {{{10, 42}, {20, 84}}};
-		BufferStream stream{reinterpret_cast<std::byte*>(podArray), sizeof(POD) * 1 * 2};
+		BufferStream stream{podArray};
 
 		POD write[1][2] = {{{20, 84}, {40, 168}}};
 		POD read[1][2] = {{{0, 0}, {0, 0}}};
@@ -334,6 +334,30 @@ TEST(BufferStream, write_c_array_ref) {
 		EXPECT_EQ(read[0][1].x, 40);
 		EXPECT_EQ(read[0][1].y, 168);
 	}
+}
+
+TEST(BufferStream, read_pointer) {
+	POD podArray[] = {{10, 42}, {20, 84}};
+	BufferStream stream{podArray};
+
+	POD read[] = {{}, {}};
+	stream.read(static_cast<POD*>(read), 2);
+	EXPECT_EQ(read[0].x, 10);
+	EXPECT_EQ(read[0].y, 42);
+	EXPECT_EQ(read[1].x, 20);
+	EXPECT_EQ(read[1].y, 84);
+}
+
+TEST(BufferStream, write_pointer) {
+	POD podArray[] = {{}, {}};
+	BufferStream stream{podArray};
+
+	POD write[] = {{10, 42}, {20, 84}};
+	stream.write(static_cast<POD*>(write), 2);
+	EXPECT_EQ(podArray[0].x, 10);
+	EXPECT_EQ(podArray[0].y, 42);
+	EXPECT_EQ(podArray[1].x, 20);
+	EXPECT_EQ(podArray[1].y, 84);
 }
 
 TEST(BufferStream, read_array_ref) {
@@ -706,14 +730,14 @@ TEST(BufferStream, write_string_ref) {
 
 TEST(BufferStream, read_int) {
 	int x = 10;
-	BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
+	BufferStream stream{&x, 1};
 
 	EXPECT_EQ(stream.read<decltype(x)>(), x);
 }
 
 TEST(BufferStream, read_pod) {
 	POD pod{10, 42};
-	BufferStream stream{reinterpret_cast<std::byte*>(&pod), sizeof(pod)};
+	BufferStream stream{&pod, 1};
 
 	auto read = stream.read<POD>();
 	EXPECT_EQ(read.x, pod.x);
@@ -792,7 +816,7 @@ TEST(BufferStream, read_string) {
 TEST(BufferStream, read_bytes) {
 	{
 		int x = 10;
-		BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
+		BufferStream stream{&x, 1};
 
 		std::array<std::byte, sizeof(x)> bytes = stream.read_bytes<sizeof(x)>();
 		EXPECT_EQ(bytes.size(), 4);
@@ -800,7 +824,7 @@ TEST(BufferStream, read_bytes) {
 	}
 	{
 		int x = 10;
-		BufferStream stream{reinterpret_cast<std::byte*>(&x), sizeof(x)};
+		BufferStream stream{&x, 1};
 
 		std::vector<std::byte> bytes = stream.read_bytes(sizeof(x));
 		EXPECT_EQ(bytes.size(), 4);

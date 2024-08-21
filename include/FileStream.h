@@ -261,6 +261,22 @@ public:
 	}
 
 	template<BufferStreamPODType T>
+	FileStream& read(T* obj, std::uint64_t n) {
+		if (n) {
+			this->file.read(reinterpret_cast<char*>(obj), sizeof(T) * n);
+		}
+		return *this;
+	}
+
+	template<BufferStreamPODType T>
+	FileStream& write(const T* obj, std::uint64_t n) {
+		if (n) {
+			this->file.write(reinterpret_cast<const char*>(obj), sizeof(T) * n);
+		}
+		return *this;
+	}
+
+	template<BufferStreamPODType T>
 	FileStream& write(const std::span<T>& obj) {
 		if (!obj.empty()) {
 			this->file.write(reinterpret_cast<const char*>(obj.data()), sizeof(T) * obj.size());
