@@ -30,7 +30,7 @@ BufferStream stream{buffer};
 Or create a stream from a raw pointer:
 ```cpp
 std::byte* buffer = ...;
-std::size_t length = ...;
+std::uint64_t length = ...;
 BufferStream stream{buffer, length};
 ```
 
@@ -130,7 +130,7 @@ use the BufferStreamReadOnly class to avoid this potential impasse. It hides all
 the functions that write, allowing the code to compile alright.
 ```cpp
 const std::byte* buffer = ...;
-std::size_t size = ...;
+std::uint64_t size = ...;
 BufferStreamReadOnly stream{buffer, size}; // Works!
 ```
 
