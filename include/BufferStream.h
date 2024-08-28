@@ -16,7 +16,7 @@
 
 /// Only POD types are directly readable from the stream.
 template<typename T>
-concept BufferStreamPODType = std::is_trivial_v<T> && std::is_standard_layout_v<T> && !std::is_pointer_v<T>;
+concept BufferStreamPODType = std::is_trivially_copyable_v<T> && !std::is_pointer_v<T>;
 
 /// For types that must be one byte large, on top of BufferStreamPODType.
 template<typename T>
