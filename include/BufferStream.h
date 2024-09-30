@@ -84,13 +84,15 @@ public:
 	template<BufferStreamResizableContiguousContainer T>
 	explicit BufferStream(T& buffer, bool resizable = true)
 			: BufferStream(buffer.data(), buffer.size() * sizeof(typename T::value_type), resizable ? [&buffer](BufferStream*, std::uint64_t newLen) {
-				while (buffer.size() * sizeof(typename T::value_type) < newLen) {
-					if (buffer.size() == 0) {
-						buffer.resize(1);
+				auto curSize = buffer.size();
+				while (curSize * sizeof(typename T::value_type) < newLen) {
+					if (!curSize) {
+						curSize = 1;
 					} else {
-						buffer.resize(buffer.size() * 2);
+						curSize *= 2;
 					}
 				}
+				buffer.resize(curSize);
 				return reinterpret_cast<std::byte*>(buffer.data());
 			} : ResizeCallback{nullptr}) {}
 
