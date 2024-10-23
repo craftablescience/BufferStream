@@ -303,11 +303,16 @@ public:
 		return this->read(obj);
 	}
 
-	FileStream& write(const std::string& obj, bool addNullTerminator = true, std::uint64_t maxSize = 0) {
-		static_assert(sizeof(typename std::string::value_type) == 1, "String char width must be 1 byte!");
+	FileStream& write(std::string_view obj, bool addNullTerminator = true, std::uint64_t maxSize = 0) {
+		static_assert(sizeof(typename std::string_view::value_type) == 1, "String char width must be 1 byte!");
 
+		bool bundledTerminator = !obj.empty() && obj[obj.size() - 1] == '\0';
 		if (maxSize == 0) {
-			maxSize = obj.size() + addNullTerminator;
+			// Add true,  bundled true  - one null terminator
+			// Add false, bundled true  - null terminator removed
+			// Add true,  bundled false - one null terminator
+			// Add false, bundled false - no null terminator
+			maxSize = obj.size() + addNullTerminator - bundledTerminator;
 		}
 		for (std::uint64_t i = 0; i < maxSize; i++) {
 			if (i < obj.size()) {
@@ -319,8 +324,16 @@ public:
 		return *this;
 	}
 
-	FileStream& operator<<(const std::string& obj) {
+	FileStream& operator<<(std::string_view obj) {
 		return this->write(obj);
+	}
+
+	FileStream& write(const std::string& obj, bool addNullTerminator = true, std::uint64_t maxSize = 0) {
+		return this->write(std::string_view{obj}, addNullTerminator, maxSize);
+	}
+
+	FileStream& operator<<(const std::string& obj) {
+		return this->write(std::string_view{obj});
 	}
 
 	FileStream& read(std::string& obj, std::uint64_t n, bool stopOnNullTerminator = true) {
