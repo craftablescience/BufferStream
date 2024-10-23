@@ -10,6 +10,7 @@
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -591,11 +592,16 @@ public:
 		return this->read(obj);
 	}
 
-	BufferStream& write(const std::string& obj, bool addNullTerminator = true, std::uint64_t maxSize = 0) {
-		static_assert(BufferStreamPODByteType<typename std::string::value_type>, "String char width must be 1 byte!");
+	BufferStream& write(std::string_view obj, bool addNullTerminator = true, std::uint64_t maxSize = 0) {
+		static_assert(BufferStreamPODByteType<typename std::string_view::value_type>, "String char width must be 1 byte!");
 
+		bool bundledTerminator = !obj.empty() && obj[obj.size() - 1] == '\0';
 		if (maxSize == 0) {
-			maxSize = obj.size() + addNullTerminator;
+			// Add true,  bundled true  - one null terminator
+			// Add false, bundled true  - null terminator removed
+			// Add true,  bundled false - one null terminator
+			// Add false, bundled false - no null terminator
+			maxSize = obj.size() + addNullTerminator - bundledTerminator;
 		}
 		if (this->bufferPos + maxSize > this->bufferLen && !this->resize_buffer(this->bufferPos + maxSize) && this->useExceptions) {
 			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
@@ -611,8 +617,16 @@ public:
 		return *this;
 	}
 
-	BufferStream& operator<<(const std::string& obj) {
+	BufferStream& operator<<(std::string_view obj) {
 		return this->write(obj);
+	}
+
+	BufferStream& write(const std::string& obj, bool addNullTerminator = true, std::uint64_t maxSize = 0) {
+		return this->write(std::string_view{obj}, addNullTerminator, maxSize);
+	}
+
+	BufferStream& operator<<(const std::string& obj) {
+		return this->write(std::string_view{obj});
 	}
 
 	BufferStream& read(std::string& obj, std::uint64_t n, bool stopOnNullTerminator = true) {
