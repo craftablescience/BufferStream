@@ -53,6 +53,10 @@ public:
 	}
 
 	FileStream& seek_in(std::int64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
+		// Match behavior in BufferStream::seek
+		if (offsetFrom == std::ios::end) {
+			offset *= -1;
+		}
 		this->file.seekg(offset, offsetFrom);
 		return *this;
 	}
@@ -62,6 +66,10 @@ public:
 	}
 
 	FileStream& seek_out(std::int64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
+		// Match behavior in BufferStream::seek
+		if (offsetFrom == std::ios::end) {
+			offset *= -1;
+		}
 		this->file.seekp(offset, offsetFrom);
 		return *this;
 	}
