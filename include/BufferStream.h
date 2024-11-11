@@ -731,7 +731,7 @@ public:
 	}
 
 	template<BufferStreamPODType T>
-	[[nodiscard]] T peek() const {
+	[[nodiscard]] T peek() {
 		return this->at<T>(0, std::ios::cur);
 	}
 
