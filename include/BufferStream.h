@@ -701,7 +701,7 @@ public:
 			}
 			return this->buffer[this->bufferPos + offset];
 		} else if (offsetFrom == std::ios::end) {
-			if (this->useExceptions && (std::cmp_greater(offset, this->bufferLen) || offset < 0)) {
+			if (this->useExceptions && (std::cmp_greater(offset, this->bufferLen) || offset <= 0)) {
 				throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 			}
 			return this->buffer[this->bufferLen - offset];
