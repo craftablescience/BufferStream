@@ -52,7 +52,7 @@ stream >> value;
 
 It's possible to read STL containers by value or reference:
 ```cpp
-auto ints = stream.read<std::array<int, 4>>();
+auto ints = stream.read<int, 4>(); // std::array
 auto floats = stream.read<std::deque<float>>(4);
 
 std::vector<char> chars;
@@ -84,7 +84,7 @@ stream >> str_ref;
 It's possible to read arrays and vectors of `std::byte` values with the earlier functions,
 but convenience functions are provided since this is such a common operation:
 ```cpp
-// Equivalent to:         bytesArray = stream.read<std::array<std::byte, 10>>();
+// Equivalent to:         bytesArray = stream.read<std::byte, 10>();
 std::array<std::byte, 10> bytesArray = stream.read_bytes<10>();
 
 // Equivalent to:      bytesVector = stream.read<std::vector<std::byte>>(10);
@@ -156,7 +156,8 @@ stream.peek(); // Returns byte after the cursor
 stream.peek<uint16_t>(); // Returns 2-byte integer after the cursor
 ```
 
-At is a more advanced version of peek that can read an object from anywhere in the stream:
+At is a more advanced version of peek that can read an object from anywhere in the stream.
+It supports everything `BufferStream::read` does, but with two extra arguments for offset and offset direction:
 ```cpp
 stream.at(0); // Returns the 0-th byte
 stream.at(1, std::ios::cur); // Returns the byte 1 byte after the cursor

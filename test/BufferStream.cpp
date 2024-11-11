@@ -7,6 +7,8 @@
 struct POD {
 	int x;
 	int y;
+
+	[[nodiscard]] bool operator==(const POD&) const = default;
 };
 
 TEST(BufferStream, open) {
@@ -85,27 +87,27 @@ TEST(BufferStream, seek) {
 	std::vector<unsigned char> buffer{{}};
 	BufferStream stream{buffer};
 
-	stream.seek(1, std::ios::beg);
+	stream.seek(1, BufferStream::SEEKDIR_BEG);
 	EXPECT_EQ(stream.tell(), 1);
 
 	try {
-		stream.seek(2, std::ios::beg);
+		stream.seek(2, BufferStream::SEEKDIR_BEG);
 		FAIL();
 	} catch (const std::overflow_error&) {}
 
-	stream.seek(-1, std::ios::cur);
+	stream.seek(-1, BufferStream::SEEKDIR_CUR);
 	EXPECT_EQ(stream.tell(), 0);
 
 	try {
-		stream.seek(-1, std::ios::cur);
+		stream.seek(-1, BufferStream::SEEKDIR_CUR);
 		FAIL();
 	} catch (const std::overflow_error&) {}
 
-	stream.seek(1, std::ios::end);
+	stream.seek(1, BufferStream::SEEKDIR_END);
 	EXPECT_EQ(stream.tell(), 0);
 
 	try {
-		stream.seek(-2, std::ios::end);
+		stream.seek(-2, BufferStream::SEEKDIR_END);
 		FAIL();
 	} catch (const std::overflow_error&) {}
 }
@@ -128,41 +130,6 @@ TEST(BufferStream, skip) {
 
 	stream.skip<std::int16_t>(-1);
 	EXPECT_EQ(stream.tell(), 3);
-}
-
-TEST(BufferStream, at) {
-	std::string buffer = "Hello";
-	BufferStream stream{buffer};
-
-	stream.seek(0);
-	EXPECT_EQ(stream.at(1), std::byte{'e'});
-	EXPECT_EQ(stream.at(2), std::byte{'l'});
-	EXPECT_EQ(stream.tell(), 0);
-
-	stream.seek(2);
-	EXPECT_EQ(stream.at(3, std::ios::beg), std::byte{'l'});
-	EXPECT_EQ(stream.at(2, std::ios::cur), std::byte{'o'});
-	EXPECT_EQ(stream.at(1, std::ios::end), std::byte{'o'});
-	EXPECT_EQ(stream.tell(), 2);
-
-	stream.seek(0);
-	EXPECT_EQ(stream.at<char>(1), 'e');
-	EXPECT_EQ(stream.at<char>(2), 'l');
-	EXPECT_EQ(stream.tell(), 0);
-
-	stream.seek(2);
-	EXPECT_EQ(stream.at<char>(3, std::ios::beg), 'l');
-	EXPECT_EQ(stream.at<char>(2, std::ios::cur), 'o');
-	EXPECT_EQ(stream.at<char>(1, std::ios::end), 'o');
-	EXPECT_EQ(stream.tell(), 2);
-}
-
-TEST(BufferStream, peek) {
-	std::string buffer = "Hello";
-	BufferStream stream{buffer};
-
-	EXPECT_EQ(stream.seek(1).peek(), std::byte{'e'});
-	EXPECT_EQ(stream.seek(2).peek(), std::byte{'l'});
 }
 
 TEST(BufferStream, read_int_ref) {
@@ -758,9 +725,9 @@ TEST(BufferStream, read_array) {
 	std::array<int, 2> podArray{10, 42};
 	BufferStream stream{podArray};
 
-	auto read = stream.read<std::array<int, 2>>();
-	EXPECT_EQ(read[0], 10);
-	EXPECT_EQ(read[1], 42);
+	auto read = stream.read<int, 2>();
+	EXPECT_EQ(read[0], podArray[0]);
+	EXPECT_EQ(read[1], podArray[1]);
 }
 
 TEST(BufferStream, read_stl_container) {
@@ -769,16 +736,16 @@ TEST(BufferStream, read_stl_container) {
 		BufferStream stream{podArray};
 
 		auto read = stream.read<std::vector<int>>(2);
-		EXPECT_EQ(read[0], 10);
-		EXPECT_EQ(read[1], 42);
+		EXPECT_EQ(read[0], podArray[0]);
+		EXPECT_EQ(read[1], podArray[1]);
 	}
 	{
 		std::vector<int> podArray{10, 42};
 		BufferStream stream{podArray};
 
 		auto read = stream.read<std::deque<int>>(2);
-		EXPECT_EQ(read[0], 10);
-		EXPECT_EQ(read[1], 42);
+		EXPECT_EQ(read[0], podArray[0]);
+		EXPECT_EQ(read[1], podArray[1]);
 	}
 }
 
@@ -788,16 +755,16 @@ TEST(BufferStream, read_span) {
 		BufferStream stream{podArray};
 
 		auto read = stream.read_span<char>(2);
-		EXPECT_EQ(read[0], 'A');
-		EXPECT_EQ(read[1], 'B');
+		EXPECT_EQ(read[0], podArray[0]);
+		EXPECT_EQ(read[1], podArray[1]);
 	}
 	{
 		std::vector<int> podArray{10, 42};
 		BufferStream stream{podArray};
 
 		auto read = stream.read_span<int>(2);
-		EXPECT_EQ(read[0], 10);
-		EXPECT_EQ(read[1], 42);
+		EXPECT_EQ(read[0], podArray[0]);
+		EXPECT_EQ(read[1], podArray[1]);
 	}
 }
 
@@ -840,4 +807,107 @@ TEST(BufferStream, read_bytes) {
 		EXPECT_EQ(bytes.size(), 4);
 		EXPECT_EQ(bytes.at(0), std::byte{10});
 	}
+}
+
+TEST(BufferStream, at_int) {
+	int x = 10;
+	BufferStream stream{&x, 1};
+
+	EXPECT_EQ(stream.at<decltype(x)>(0), x);
+}
+
+TEST(BufferStream, at_pod) {
+	POD pod{10, 42};
+	BufferStream stream{&pod, 1};
+
+	EXPECT_EQ(stream.at<int>(0), pod.x);
+	EXPECT_EQ(stream.at<int>(sizeof(int)), pod.y);
+	EXPECT_EQ(stream.at<POD>(0), pod);
+}
+
+TEST(BufferStream, at_array) {
+	std::array<int, 2> podArray{10, 42};
+	BufferStream stream{podArray};
+
+	EXPECT_EQ(stream.at<int>(0), podArray[0]);
+	EXPECT_EQ(stream.at<int>(sizeof(int)), podArray[1]);
+	EXPECT_EQ((stream.at<int, 2>(0)), podArray);
+}
+
+TEST(BufferStream, at_stl_container) {
+	{
+		std::vector<int> podArray{10, 42};
+		BufferStream stream{podArray};
+
+		auto read = stream.at<std::vector<int>>(2, 0);
+		EXPECT_EQ(read[0], podArray[0]);
+		EXPECT_EQ(read[1], podArray[1]);
+	}
+	{
+		std::vector<int> podArray{10, 42};
+		BufferStream stream{podArray};
+
+		auto read = stream.at<std::deque<int>>(2, 0);
+		EXPECT_EQ(read[0], podArray[0]);
+		EXPECT_EQ(read[1], podArray[1]);
+	}
+}
+
+TEST(BufferStream, at_span) {
+	{
+		std::vector<char> podArray{'A', 'B'};
+		BufferStream stream{podArray};
+
+		auto read = stream.at_span<char>(2, 0);
+		EXPECT_EQ(read[0], podArray[0]);
+		EXPECT_EQ(read[1], podArray[1]);
+	}
+	{
+		std::vector<int> podArray{10, 42};
+		BufferStream stream{podArray};
+
+		auto read = stream.at_span<int>(2, 0);
+		EXPECT_EQ(read[0], podArray[0]);
+		EXPECT_EQ(read[1], podArray[1]);
+	}
+}
+
+TEST(BufferStream, at_string) {
+	std::string buffer = "Hello world";
+	buffer.push_back('\0');
+	buffer.push_back('\0');
+	buffer.push_back('\0');
+	BufferStream stream{buffer};
+
+	EXPECT_STREQ(stream.at_string(0).c_str(), "Hello world");
+	EXPECT_STREQ(stream.at_string(5, false, 0).c_str(), "Hello");
+	EXPECT_EQ(stream.at_string(13, true, 0).size(), 11);
+	EXPECT_EQ(stream.at_string(13, false, 0).size(), 13);
+}
+
+TEST(BufferStream, at_bytes) {
+	{
+		int x = 10;
+		BufferStream stream{&x, 1};
+
+		std::array<std::byte, sizeof(x)> bytes = stream.at_bytes<sizeof(x)>(0);
+		EXPECT_EQ(bytes.size(), 4);
+		EXPECT_EQ(bytes.at(0), std::byte{10});
+	}
+	{
+		int x = 10;
+		BufferStream stream{&x, 1};
+
+		std::vector<std::byte> bytes = stream.at_bytes(sizeof(x), 0);
+		EXPECT_EQ(bytes.size(), 4);
+		EXPECT_EQ(bytes.at(0), std::byte{10});
+	}
+}
+
+TEST(BufferStream, peek) {
+	std::string buffer = "Hello";
+	BufferStream stream{buffer};
+
+	EXPECT_EQ(stream.seek(1).peek(), std::byte{'e'});
+	EXPECT_EQ(stream.seek(2).peek<char>(), 'l');
 }
