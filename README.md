@@ -150,10 +150,18 @@ stream.seek(2);
 stream.tell(); // Returns 2
 ```
 
-Peek can read a byte from an offset relative to the cursor without advancing the cursor:
+Peek can read an object directly after the cursor without advancing:
 ```cpp
-stream.peek(); // Returns byte currently at the cursor
-stream.peek(2); // Returns byte 2 bytes ahead of the cursor
+stream.peek(); // Returns byte after the cursor
+stream.peek<uint16_t>(); // Returns 2-byte integer after the cursor
+```
+
+At is a more advanced version of peek that can read an object from anywhere in the stream:
+```cpp
+stream.at(0); // Returns the 0-th byte
+stream.at(1, std::ios::cur); // Returns the byte 1 byte after the cursor
+stream.at<uint16_t>(0); // Returns the 2-byte integer starting at the start of the stream
+stream.at<uint16_t>(-1, std::ios::cur); // Returns the 2-byte integer starting 1 byte before the cursor
 ```
 
 Skip can skip over a given type:

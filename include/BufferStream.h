@@ -160,28 +160,6 @@ public:
 		return this->bufferLen;
 	}
 
-	[[nodiscard]] std::byte peek(std::int64_t offset = 0) const {
-		if (this->useExceptions && std::cmp_greater_equal(offset, this->bufferLen - this->bufferPos)) {
-			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
-		}
-
-		return this->buffer[this->bufferPos + offset];
-	}
-
-	[[nodiscard]] std::byte peek_u(std::uint64_t offset = 0) const {
-		return this->peek(static_cast<std::int64_t>(offset));
-	}
-
-	template<BufferStreamPODByteType T>
-	[[nodiscard]] T peek(std::int64_t offset = 0) const {
-		return static_cast<T>(this->peek(offset));
-	}
-
-	template<BufferStreamPODByteType T>
-	[[nodiscard]] T peek_u(std::uint64_t offset = 0) const {
-		return static_cast<T>(this->peek_u(offset));
-	}
-
 	template<BufferStreamPODType T>
 	BufferStream& read(T& obj) {
 		if (this->useExceptions && this->bufferPos + sizeof(T) > this->bufferLen) {
@@ -709,6 +687,74 @@ public:
 		std::vector<std::byte> out;
 		this->read(out, length);
 		return out;
+	}
+
+	[[nodiscard]] std::byte at(std::int64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) const {
+		if (offsetFrom == std::ios::beg) {
+			if (this->useExceptions && (std::cmp_greater(offset, this->bufferLen) || offset < 0)) {
+				throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+			}
+			return this->buffer[offset];
+		} else if (offsetFrom == std::ios::cur) {
+			if (this->useExceptions && (std::cmp_greater(this->bufferPos + offset, this->bufferLen) || this->bufferPos + offset < 0)) {
+				throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+			}
+			return this->buffer[this->bufferPos + offset];
+		} else if (offsetFrom == std::ios::end) {
+			if (this->useExceptions && (std::cmp_greater(offset, this->bufferLen) || offset < 0)) {
+				throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+			}
+			return this->buffer[this->bufferLen - offset];
+		}
+		return {};
+	}
+
+	[[nodiscard]] std::byte at_u(std::uint64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) const {
+		return this->at(static_cast<std::int64_t>(offset), offsetFrom);
+	}
+
+	template<BufferStreamPODType T>
+	[[nodiscard]] T at(std::int64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
+		const std::uint64_t pos = this->tell();
+		const T val = this->seek(offset, offsetFrom).read<T>();
+		this->seek_u(pos);
+		return val;
+	}
+
+	template<BufferStreamPODType T>
+	[[nodiscard]] T at_u(std::uint64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
+		return this->at(static_cast<std::int64_t>(offset), offsetFrom);
+	}
+
+	[[nodiscard]] std::byte peek() const {
+		return this->at(0, std::ios::cur);
+	}
+
+	template<BufferStreamPODType T>
+	[[nodiscard]] T peek() const {
+		return this->at<T>(0, std::ios::cur);
+	}
+
+	[[deprecated("Use BufferStream::at(offset, std::ios::cur) instead")]] [[nodiscard]] std::byte peek(std::int64_t offset) const {
+		if (this->useExceptions && std::cmp_greater_equal(offset, this->bufferLen - this->bufferPos)) {
+			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+		}
+
+		return this->buffer[this->bufferPos + offset];
+	}
+
+	[[deprecated("Use BufferStream::peek() or BufferStream::at_u(offset, std::ios::cur) instead")]] [[nodiscard]] std::byte peek_u(std::uint64_t offset = 0) const {
+		return this->peek(static_cast<std::int64_t>(offset));
+	}
+
+	template<BufferStreamPODByteType T>
+	[[deprecated("Use BufferStream::at<T>(offset, std::ios::cur) instead")]] [[nodiscard]] T peek(std::int64_t offset = 0) const {
+		return static_cast<T>(this->peek(offset));
+	}
+
+	template<BufferStreamPODByteType T>
+	[[deprecated("Use BufferStream::peek() or BufferStream::at_u<T>(offset, std::ios::cur) instead")]] [[nodiscard]] T peek_u(std::uint64_t offset = 0) const {
+		return static_cast<T>(this->peek_u(offset));
 	}
 
 protected:

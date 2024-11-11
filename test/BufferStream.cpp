@@ -130,29 +130,39 @@ TEST(BufferStream, skip) {
 	EXPECT_EQ(stream.tell(), 3);
 }
 
-TEST(BufferStream, peek) {
+TEST(BufferStream, at) {
 	std::string buffer = "Hello";
 	BufferStream stream{buffer};
 
 	stream.seek(0);
-	EXPECT_EQ(stream.peek(1), std::byte{'e'});
-	EXPECT_EQ(stream.peek(2), std::byte{'l'});
+	EXPECT_EQ(stream.at(1), std::byte{'e'});
+	EXPECT_EQ(stream.at(2), std::byte{'l'});
 	EXPECT_EQ(stream.tell(), 0);
 
 	stream.seek(2);
-	EXPECT_EQ(stream.peek(1), std::byte{'l'});
-	EXPECT_EQ(stream.peek(2), std::byte{'o'});
+	EXPECT_EQ(stream.at(3, std::ios::beg), std::byte{'l'});
+	EXPECT_EQ(stream.at(2, std::ios::cur), std::byte{'o'});
+	EXPECT_EQ(stream.at(1, std::ios::end), std::byte{'o'});
 	EXPECT_EQ(stream.tell(), 2);
 
 	stream.seek(0);
-	EXPECT_EQ(stream.peek<char>(1), 'e');
-	EXPECT_EQ(stream.peek<char>(2), 'l');
+	EXPECT_EQ(stream.at<char>(1), 'e');
+	EXPECT_EQ(stream.at<char>(2), 'l');
 	EXPECT_EQ(stream.tell(), 0);
 
 	stream.seek(2);
-	EXPECT_EQ(stream.peek<char>(1), 'l');
-	EXPECT_EQ(stream.peek<char>(2), 'o');
+	EXPECT_EQ(stream.at<char>(3, std::ios::beg), 'l');
+	EXPECT_EQ(stream.at<char>(2, std::ios::cur), 'o');
+	EXPECT_EQ(stream.at<char>(1, std::ios::end), 'o');
 	EXPECT_EQ(stream.tell(), 2);
+}
+
+TEST(BufferStream, peek) {
+	std::string buffer = "Hello";
+	BufferStream stream{buffer};
+
+	EXPECT_EQ(stream.seek(1).peek(), std::byte{'e'});
+	EXPECT_EQ(stream.seek(2).peek(), std::byte{'l'});
 }
 
 TEST(BufferStream, read_int_ref) {
