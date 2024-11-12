@@ -87,27 +87,27 @@ TEST(BufferStream, seek) {
 	std::vector<unsigned char> buffer{{}};
 	BufferStream stream{buffer};
 
-	stream.seek(1, BufferStream::SEEKDIR_BEG);
+	stream.seek(1, std::ios::beg);
 	EXPECT_EQ(stream.tell(), 1);
 
 	try {
-		stream.seek(2, BufferStream::SEEKDIR_BEG);
+		stream.seek(2, std::ios::beg);
 		FAIL();
 	} catch (const std::overflow_error&) {}
 
-	stream.seek(-1, BufferStream::SEEKDIR_CUR);
+	stream.seek(-1, std::ios::cur);
 	EXPECT_EQ(stream.tell(), 0);
 
 	try {
-		stream.seek(-1, BufferStream::SEEKDIR_CUR);
+		stream.seek(-1, std::ios::cur);
 		FAIL();
 	} catch (const std::overflow_error&) {}
 
-	stream.seek(1, BufferStream::SEEKDIR_END);
+	stream.seek(1, std::ios::end);
 	EXPECT_EQ(stream.tell(), 0);
 
 	try {
-		stream.seek(-2, BufferStream::SEEKDIR_END);
+		stream.seek(-2, std::ios::end);
 		FAIL();
 	} catch (const std::overflow_error&) {}
 }

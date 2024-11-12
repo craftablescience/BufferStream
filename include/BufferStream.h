@@ -61,16 +61,10 @@ class BufferStream {
 public:
 	using ResizeCallback = std::function<std::byte*(BufferStream* stream, std::uint64_t newLen)>;
 
-	enum BufferStreamSeekDir : int {
-		SEEKDIR_BEG = static_cast<int>(std::ios::beg),
-		SEEKDIR_CUR = static_cast<int>(std::ios::cur),
-		SEEKDIR_END = static_cast<int>(std::ios::end),
-	};
-
 	template<BufferStreamPODType T>
-	BufferStream(T* buffer, std::uint64_t bufferLen, ResizeCallback resizeCallback = nullptr)
+	BufferStream(T* buffer, std::uint64_t bufferLen_, ResizeCallback resizeCallback = nullptr)
 			: buffer(reinterpret_cast<std::byte*>(buffer))
-			, bufferLen(sizeof(T) * bufferLen)
+			, bufferLen(sizeof(T) * bufferLen_)
 			, bufferPos(0)
 			, bufferResizeCallback(std::move(resizeCallback))
 			, useExceptions(true)
@@ -113,31 +107,33 @@ public:
 		return *this;
 	}
 
-	BufferStream& seek(std::int64_t offset, BufferStreamSeekDir offsetFrom = SEEKDIR_BEG) {
+	BufferStream& seek(std::int64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		switch (offsetFrom) {
-			case SEEKDIR_BEG:
+			case std::ios::beg:
 				if (this->useExceptions && (std::cmp_greater(offset, this->bufferLen) || offset < 0)) {
 					throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 				}
 				this->bufferPos = offset;
 				break;
-			case SEEKDIR_CUR:
+			case std::ios::cur:
 				if (this->useExceptions && (std::cmp_greater(this->bufferPos + offset, this->bufferLen) || this->bufferPos + offset < 0)) {
 					throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 				}
 				this->bufferPos += offset;
 				break;
-			case SEEKDIR_END:
+			case std::ios::end:
 				if (this->useExceptions && (std::cmp_greater(offset, this->bufferLen) || offset < 0)) {
 					throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 				}
 				this->bufferPos = this->bufferLen - offset;
 				break;
+			default:
+				break;
 		}
 		return *this;
 	}
 
-	BufferStream& seek_u(std::uint64_t offset, BufferStreamSeekDir offsetFrom = SEEKDIR_BEG) {
+	BufferStream& seek_u(std::uint64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		return this->seek(static_cast<std::int64_t>(offset), offsetFrom);
 	}
 
@@ -146,7 +142,7 @@ public:
 		if (!n) {
 			return *this;
 		}
-		return this->seek(sizeof(T) * n, SEEKDIR_CUR);
+		return this->seek(sizeof(T) * n, std::ios::cur);
 	}
 
 	template<BufferStreamPODType T = std::byte>
@@ -699,33 +695,35 @@ public:
 		return out;
 	}
 
-	[[nodiscard]] std::byte at(std::int64_t offset, BufferStreamSeekDir offsetFrom = SEEKDIR_BEG) const {
+	[[nodiscard]] std::byte at(std::int64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) const {
 		switch (offsetFrom) {
-			case SEEKDIR_BEG:
+			case std::ios::beg:
 				if (this->useExceptions && (std::cmp_greater(offset, this->bufferLen) || offset < 0)) {
 					throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 				}
 				return this->buffer[offset];
-			case SEEKDIR_CUR:
+			case std::ios::cur:
 				if (this->useExceptions && (std::cmp_greater(this->bufferPos + offset, this->bufferLen) || this->bufferPos + offset < 0)) {
 					throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 				}
 				return this->buffer[this->bufferPos + offset];
-			case SEEKDIR_END:
+			case std::ios::end:
 				if (this->useExceptions && (std::cmp_greater(offset, this->bufferLen) || offset <= 0)) {
 					throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
 				}
 				return this->buffer[this->bufferLen - offset];
+			default:
+				break;
 		}
 		return {};
 	}
 
-	[[nodiscard]] std::byte at_u(std::uint64_t offset, BufferStreamSeekDir offsetFrom = SEEKDIR_BEG) const {
+	[[nodiscard]] std::byte at_u(std::uint64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) const {
 		return this->at(static_cast<std::int64_t>(offset), offsetFrom);
 	}
 
 	template<BufferStreamPODType T>
-	[[nodiscard]] T at(std::int64_t offset, BufferStreamSeekDir offsetFrom = SEEKDIR_BEG) {
+	[[nodiscard]] T at(std::int64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		const std::uint64_t pos = this->tell();
 		const T val = this->seek(offset, offsetFrom).read<T>();
 		this->seek_u(pos);
@@ -733,12 +731,12 @@ public:
 	}
 
 	template<BufferStreamPODType T>
-	[[nodiscard]] T at_u(std::uint64_t offset, BufferStreamSeekDir offsetFrom = SEEKDIR_BEG) {
+	[[nodiscard]] T at_u(std::uint64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		return this->at(static_cast<std::int64_t>(offset), offsetFrom);
 	}
 
 	template<BufferStreamPODType T, std::uint64_t N>
-	[[nodiscard]] std::array<T, N> at(std::int64_t offset, BufferStreamSeekDir offsetFrom = SEEKDIR_BEG) {
+	[[nodiscard]] std::array<T, N> at(std::int64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		const std::uint64_t pos = this->tell();
 		const std::array<T, N> val = this->seek(offset, offsetFrom).read<T, N>();
 		this->seek_u(pos);
@@ -746,12 +744,12 @@ public:
 	}
 
 	template<BufferStreamPODType T, std::uint64_t N>
-	[[nodiscard]] std::array<T, N> at_u(std::uint64_t offset, BufferStreamSeekDir offsetFrom = SEEKDIR_BEG) {
+	[[nodiscard]] std::array<T, N> at_u(std::uint64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		return this->at<T, N>(static_cast<std::int64_t>(offset), offsetFrom);
 	}
 
 	template<BufferStreamPossiblyNonContiguousResizableContainer T>
-	[[nodiscard]] T at(std::uint64_t n, std::int64_t offset, BufferStreamSeekDir offsetFrom = SEEKDIR_BEG) {
+	[[nodiscard]] T at(std::uint64_t n, std::int64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		const std::uint64_t pos = this->tell();
 		const T val = this->seek(offset, offsetFrom).read<T>(n);
 		this->seek_u(pos);
@@ -759,12 +757,12 @@ public:
 	}
 
 	template<BufferStreamPossiblyNonContiguousResizableContainer T>
-	[[nodiscard]] T at_u(std::uint64_t n, std::uint64_t offset, BufferStreamSeekDir offsetFrom = SEEKDIR_BEG) {
+	[[nodiscard]] T at_u(std::uint64_t n, std::uint64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		return this->at<T>(n, static_cast<std::int64_t>(offset), offsetFrom);
 	}
 
 	template<BufferStreamPODType T>
-	[[nodiscard]] std::span<T> at_span(std::uint64_t n, std::int64_t offset, BufferStreamSeekDir offsetFrom = SEEKDIR_BEG) {
+	[[nodiscard]] std::span<T> at_span(std::uint64_t n, std::int64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		const std::uint64_t pos = this->tell();
 		const std::span<T> val = this->seek(offset, offsetFrom).read_span<T>(n);
 		this->seek_u(pos);
@@ -772,34 +770,34 @@ public:
 	}
 
 	template<BufferStreamPODType T>
-	[[nodiscard]] std::span<T> at_span_u(std::uint64_t n, std::uint64_t offset, BufferStreamSeekDir offsetFrom = SEEKDIR_BEG) {
+	[[nodiscard]] std::span<T> at_span_u(std::uint64_t n, std::uint64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		return this->at_span<T>(n, static_cast<std::int64_t>(offset), offsetFrom);
 	}
 
-	[[nodiscard]] std::string at_string(std::int64_t offset, BufferStreamSeekDir offsetFrom = SEEKDIR_BEG) {
+	[[nodiscard]] std::string at_string(std::int64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		const std::uint64_t pos = this->tell();
 		const std::string val = this->seek(offset, offsetFrom).read_string();
 		this->seek_u(pos);
 		return val;
 	}
 
-	[[nodiscard]] std::string at_string_u(std::uint64_t offset, BufferStreamSeekDir offsetFrom = SEEKDIR_BEG) {
+	[[nodiscard]] std::string at_string_u(std::uint64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		return this->at_string(static_cast<std::int64_t>(offset), offsetFrom);
 	}
 
-	[[nodiscard]] std::string at_string(std::uint64_t n, bool stopOnNullTerminator, std::int64_t offset, BufferStreamSeekDir offsetFrom = SEEKDIR_BEG) {
+	[[nodiscard]] std::string at_string(std::uint64_t n, bool stopOnNullTerminator, std::int64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		const std::uint64_t pos = this->tell();
 		const std::string val = this->seek(offset, offsetFrom).read_string(n, stopOnNullTerminator);
 		this->seek_u(pos);
 		return val;
 	}
 
-	[[nodiscard]] std::string at_string_u(std::uint64_t n, bool stopOnNullTerminator, std::uint64_t offset, BufferStreamSeekDir offsetFrom = SEEKDIR_BEG) {
+	[[nodiscard]] std::string at_string_u(std::uint64_t n, bool stopOnNullTerminator, std::uint64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		return this->at_string(n, stopOnNullTerminator, static_cast<std::int64_t>(offset), offsetFrom);
 	}
 
 	template<std::uint64_t L>
-	[[nodiscard]] std::array<std::byte, L> at_bytes(std::int64_t offset, BufferStreamSeekDir offsetFrom = SEEKDIR_BEG) {
+	[[nodiscard]] std::array<std::byte, L> at_bytes(std::int64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		const std::uint64_t pos = this->tell();
 		const std::array<std::byte, L> val = this->seek(offset, offsetFrom).read_bytes<L>();
 		this->seek_u(pos);
@@ -807,28 +805,28 @@ public:
 	}
 
 	template<std::uint64_t L>
-	[[nodiscard]] std::array<std::byte, L> at_bytes_u(std::uint64_t offset, BufferStreamSeekDir offsetFrom = SEEKDIR_BEG) {
+	[[nodiscard]] std::array<std::byte, L> at_bytes_u(std::uint64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		return this->at_bytes<L>(static_cast<std::int64_t>(offset), offsetFrom);
 	}
 
-	[[nodiscard]] std::vector<std::byte> at_bytes(std::uint64_t length, std::int64_t offset, BufferStreamSeekDir offsetFrom = SEEKDIR_BEG) {
+	[[nodiscard]] std::vector<std::byte> at_bytes(std::uint64_t length, std::int64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		const std::uint64_t pos = this->tell();
 		const std::vector<std::byte> val = this->seek(offset, offsetFrom).read_bytes(length);
 		this->seek_u(pos);
 		return val;
 	}
 
-	[[nodiscard]] std::vector<std::byte> at_bytes_u(std::uint64_t length, std::uint64_t offset, BufferStreamSeekDir offsetFrom = SEEKDIR_BEG) {
+	[[nodiscard]] std::vector<std::byte> at_bytes_u(std::uint64_t length, std::uint64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
 		return this->at_bytes(length, static_cast<std::int64_t>(offset), offsetFrom);
 	}
 
 	[[nodiscard]] std::byte peek() const {
-		return this->at(0, SEEKDIR_CUR);
+		return this->at(0, std::ios::cur);
 	}
 
 	template<BufferStreamPODType T>
 	[[nodiscard]] T peek() {
-		return this->at<T>(0, SEEKDIR_CUR);
+		return this->at<T>(0, std::ios::cur);
 	}
 
 protected:
@@ -839,9 +837,9 @@ protected:
 	bool useExceptions;
 	bool bigEndian;
 
-	static inline constexpr const char* OVERFLOW_READ_ERROR_MESSAGE = "Attempted to read value out of buffer bounds!";
-	static inline constexpr const char* OVERFLOW_WRITE_ERROR_MESSAGE = "Attempted to write value out of buffer bounds!";
-	static inline constexpr const char* BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE = "Cannot change endianness of complex types!";
+	static constexpr auto OVERFLOW_READ_ERROR_MESSAGE = "Attempted to read value out of buffer bounds!";
+	static constexpr auto OVERFLOW_WRITE_ERROR_MESSAGE = "Attempted to write value out of buffer bounds!";
+	static constexpr auto BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE = "Cannot change endianness of complex types!";
 
 	[[nodiscard]] bool resize_buffer(std::uint64_t newLen) {
 		if (!this->bufferResizeCallback) {
