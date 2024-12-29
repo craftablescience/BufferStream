@@ -64,6 +64,17 @@ TEST(BufferStream, read_big_endian) {
 		auto y = stream.set_big_endian(true).read<std::uint32_t>();
 		EXPECT_EQ(y, 0x00'EF'CD'AB);
 	}
+	{
+		enum class Test : uint32_t {
+			TEST_ME = 1,
+		};
+
+		std::uint32_t x = 0x01'00'00'00;
+		BufferStream stream{&x, 1};
+
+		auto y = stream.set_big_endian(true).read<Test>();
+		EXPECT_EQ(y, Test::TEST_ME);
+	}
 }
 
 TEST(BufferStream, write_big_endian) {
@@ -80,6 +91,17 @@ TEST(BufferStream, write_big_endian) {
 
 		stream.set_big_endian(true).write(0xAB'CD'EF'00).set_big_endian(false).seek(0);
 		EXPECT_EQ(stream.read<std::uint32_t>(), 0x00'EF'CD'AB);
+	}
+	{
+		enum class Test : uint32_t {
+			TEST_ME = 1,
+		};
+
+		std::uint32_t x = 0;
+		BufferStream stream{&x, 1};
+
+		stream.set_big_endian(true).write(Test::TEST_ME).set_big_endian(false).seek(0);
+		EXPECT_EQ(static_cast<uint32_t>(stream.read<Test>()), 0x01'00'00'00);
 	}
 }
 

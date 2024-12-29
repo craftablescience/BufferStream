@@ -178,6 +178,8 @@ public:
 				if (this->bigEndian) {
 					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
 						swap_endian(&obj);
+					} else if constexpr (std::is_enum_v<T>) {
+						swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&obj));
 					} else {
 						// Just don't swap the bytes...
 						if (this->useExceptions) {
@@ -189,6 +191,8 @@ public:
 				if (!this->bigEndian) {
 					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
 						swap_endian(&obj);
+					} else if constexpr (std::is_enum_v<T>) {
+						swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&obj));
 					} else {
 						// Just don't swap the bytes...
 						if (this->useExceptions) {
@@ -222,6 +226,8 @@ public:
 				if (this->bigEndian) {
 					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
 						swap_endian(reinterpret_cast<T*>(this->buffer + this->bufferPos));
+					} else if constexpr (std::is_enum_v<T>) {
+						swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(this->buffer + this->bufferPos));
 					} else {
 						// Just don't swap the bytes...
 						if (this->useExceptions) {
@@ -233,6 +239,8 @@ public:
 				if (!this->bigEndian) {
 					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
 						swap_endian(reinterpret_cast<T*>(this->buffer + this->bufferPos));
+					} else if constexpr (std::is_enum_v<T>) {
+						swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(this->buffer + this->bufferPos));
 					} else {
 						// Just don't swap the bytes...
 						if (this->useExceptions) {
