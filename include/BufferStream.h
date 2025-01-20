@@ -97,9 +97,17 @@ public:
 				return reinterpret_cast<std::byte*>(buffer.data());
 			} : ResizeCallback{nullptr}) {}
 
+	[[nodiscard]] bool are_exceptions_enabled() const {
+		return this->useExceptions;
+	}
+
 	BufferStream& set_exceptions_enabled(bool exceptions) {
 		this->useExceptions = exceptions;
 		return *this;
+	}
+
+	[[nodiscard]] bool is_big_endian() const {
+		return this->bigEndian;
 	}
 
 	BufferStream& set_big_endian(bool readBigEndian) {
@@ -837,6 +845,19 @@ public:
 		return this->at<T>(0, std::ios::cur);
 	}
 
+	template<BufferStreamPODType T>
+	static constexpr void swap_endian(T* t) {
+		union {
+			T t;
+			std::byte bytes[sizeof(T)];
+		} source{}, dest{};
+		source.t = *t;
+		for (std::uint64_t k = 0; k < sizeof(T); k++) {
+			dest.bytes[k] = source.bytes[sizeof(T) - k - 1];
+		}
+		*t = dest.t;
+	};
+
 protected:
 	std::byte* buffer;
 	std::uint64_t bufferLen;
@@ -857,19 +878,6 @@ protected:
 		this->bufferLen = newLen;
 		return true;
 	}
-
-	template<BufferStreamPODType T>
-	static constexpr void swap_endian(T* t) {
-		union {
-			T t;
-			std::byte bytes[sizeof(T)];
-		} source{}, dest{};
-		source.t = *t;
-		for (std::uint64_t k = 0; k < sizeof(T); k++) {
-			dest.bytes[k] = source.bytes[sizeof(T) - k - 1];
-		}
-		*t = dest.t;
-	};
 };
 
 class BufferStreamReadOnly : public BufferStream {
