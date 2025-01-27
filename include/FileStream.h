@@ -149,9 +149,9 @@ public:
 			if constexpr (std::endian::native == std::endian::little) {
 				if (this->bigEndian) {
 					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
-						swap_endian(&obj);
+						BufferStream::swap_endian(&obj);
 					} else if constexpr (std::is_enum_v<T>) {
-						swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&obj));
+						BufferStream::swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&obj));
 					} else {
 						// Just don't swap the bytes...
 						if (this->useExceptions) {
@@ -162,9 +162,9 @@ public:
 			} else if constexpr (std::endian::native == std::endian::big) {
 				if (!this->bigEndian) {
 					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
-						swap_endian(&obj);
+						BufferStream::swap_endian(&obj);
 					} else if constexpr (std::is_enum_v<T>) {
-						swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&obj));
+						BufferStream::swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&obj));
 					} else {
 						// Just don't swap the bytes...
 						if (this->useExceptions) {
@@ -191,9 +191,9 @@ public:
 				if (this->bigEndian) {
 					T objCopy = obj;
 					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
-						swap_endian(&objCopy);
+						BufferStream::swap_endian(&objCopy);
 					} else if constexpr (std::is_enum_v<T>) {
-						swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&objCopy));
+						BufferStream::swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&objCopy));
 					} else {
 						// Just don't swap the bytes...
 						if (this->useExceptions) {
@@ -208,9 +208,9 @@ public:
 				if (!this->bigEndian) {
 					T objCopy = obj;
 					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
-						swap_endian(&objCopy);
+						BufferStream::swap_endian(&objCopy);
 					} else if constexpr (std::is_enum_v<T>) {
-						swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&objCopy));
+						BufferStream::swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&objCopy));
 					} else {
 						// Just don't swap the bytes...
 						if (this->useExceptions) {
@@ -369,11 +369,11 @@ public:
 				if (this->bigEndian) {
 					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
 						for (std::uint64_t i = 0; i < n; i++) {
-							swap_endian(&obj[i]);
+							BufferStream::swap_endian(&obj[i]);
 						}
 					} else if constexpr (std::is_enum_v<T>) {
 						for (std::uint64_t i = 0; i < n; i++) {
-							swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&obj[i]));
+							BufferStream::swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&obj[i]));
 						}
 					} else {
 						// Just don't swap the bytes...
@@ -386,11 +386,11 @@ public:
 				if (!this->bigEndian) {
 					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
 						for (std::uint64_t i = 0; i < n; i++) {
-							swap_endian(&obj[i]);
+							BufferStream::swap_endian(&obj[i]);
 						}
 					} else if constexpr (std::is_enum_v<T>) {
 						for (std::uint64_t i = 0; i < n; i++) {
-							swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&obj[i]));
+							BufferStream::swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&obj[i]));
 						}
 					} else {
 						// Just don't swap the bytes...
@@ -418,9 +418,9 @@ public:
 					for (std::uint64_t i = 0; i < n; i++) {
 						T objCopy = obj[i];
 						if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
-							swap_endian(&objCopy);
+							BufferStream::swap_endian(&objCopy);
 						} else if constexpr (std::is_enum_v<T>) {
-							swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&objCopy));
+							BufferStream::swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&objCopy));
 						} else {
 							// Just don't swap the bytes...
 							if (this->useExceptions) {
@@ -437,9 +437,9 @@ public:
 					for (std::uint64_t i = 0; i < n; i++) {
 						T objCopy = obj[i];
 						if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
-							swap_endian(&objCopy);
+							BufferStream::swap_endian(&objCopy);
 						} else if constexpr (std::is_enum_v<T>) {
-							swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&objCopy));
+							BufferStream::swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&objCopy));
 						} else {
 							// Just don't swap the bytes...
 							if (this->useExceptions) {
