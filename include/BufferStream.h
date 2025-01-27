@@ -57,6 +57,10 @@ concept BufferStreamPossiblyNonContiguousResizableContainer = BufferStreamPossib
 	{t.push_back(typename T::value_type{})} -> std::same_as<void>;
 };
 
+constexpr auto BUFFERSTREAM_OVERFLOW_READ_ERROR_MESSAGE = "Attempted to read value out of buffer bounds!";
+constexpr auto BUFFERSTREAM_OVERFLOW_WRITE_ERROR_MESSAGE = "Attempted to write value out of buffer bounds!";
+constexpr auto BUFFERSTREAM_BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE = "Cannot change endianness of complex types!";
+
 class BufferStream {
 public:
 	using ResizeCallback = std::function<std::byte*(BufferStream* stream, std::uint64_t newLen)>;
@@ -119,19 +123,19 @@ public:
 		switch (offsetFrom) {
 			case std::ios::beg:
 				if (this->useExceptions && (std::cmp_greater(offset, this->bufferLen) || offset < 0)) {
-					throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+					throw std::overflow_error{BUFFERSTREAM_OVERFLOW_READ_ERROR_MESSAGE};
 				}
 				this->bufferPos = offset;
 				break;
 			case std::ios::cur:
 				if (this->useExceptions && (std::cmp_greater(this->bufferPos + offset, this->bufferLen) || this->bufferPos + offset < 0)) {
-					throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+					throw std::overflow_error{BUFFERSTREAM_OVERFLOW_READ_ERROR_MESSAGE};
 				}
 				this->bufferPos += offset;
 				break;
 			case std::ios::end:
 				if (this->useExceptions && (std::cmp_greater(offset, this->bufferLen) || offset < 0)) {
-					throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+					throw std::overflow_error{BUFFERSTREAM_OVERFLOW_READ_ERROR_MESSAGE};
 				}
 				this->bufferPos = this->bufferLen - offset;
 				break;
@@ -177,7 +181,7 @@ public:
 	template<BufferStreamPODType T>
 	BufferStream& read(T& obj) {
 		if (this->useExceptions && this->bufferPos + sizeof(T) > this->bufferLen) {
-			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+			throw std::overflow_error{BUFFERSTREAM_OVERFLOW_READ_ERROR_MESSAGE};
 		}
 
 		std::memcpy(&obj, this->buffer + this->bufferPos, sizeof(T));
@@ -191,7 +195,7 @@ public:
 					} else {
 						// Just don't swap the bytes...
 						if (this->useExceptions) {
-							throw std::invalid_argument{BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
+							throw std::invalid_argument{BUFFERSTREAM_BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
 						}
 					}
 				}
@@ -204,7 +208,7 @@ public:
 					} else {
 						// Just don't swap the bytes...
 						if (this->useExceptions) {
-							throw std::invalid_argument{BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
+							throw std::invalid_argument{BUFFERSTREAM_BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
 						}
 					}
 				}
@@ -225,7 +229,7 @@ public:
 	template<BufferStreamPODType T>
 	BufferStream& write(const T& obj) {
 		if (this->bufferPos + sizeof(T) > this->bufferLen && !this->resize_buffer(this->bufferPos + sizeof(T)) && this->useExceptions) {
-			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
+			throw std::overflow_error{BUFFERSTREAM_OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
 		std::memcpy(this->buffer + this->bufferPos, &obj, sizeof(T));
@@ -239,7 +243,7 @@ public:
 					} else {
 						// Just don't swap the bytes...
 						if (this->useExceptions) {
-							throw std::invalid_argument{BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
+							throw std::invalid_argument{BUFFERSTREAM_BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
 						}
 					}
 				}
@@ -252,7 +256,7 @@ public:
 					} else {
 						// Just don't swap the bytes...
 						if (this->useExceptions) {
-							throw std::invalid_argument{BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
+							throw std::invalid_argument{BUFFERSTREAM_BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
 						}
 					}
 				}
@@ -273,7 +277,7 @@ public:
 	template<BufferStreamPODType T, std::uint64_t N>
 	BufferStream& read(T(&obj)[N]) {
 		if (this->useExceptions && this->bufferPos + sizeof(T) * N > this->bufferLen) {
-			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+			throw std::overflow_error{BUFFERSTREAM_OVERFLOW_READ_ERROR_MESSAGE};
 		}
 
 		if constexpr (BufferStreamPODByteType<T>) {
@@ -295,7 +299,7 @@ public:
 	template<BufferStreamPODType T, std::uint64_t N>
 	BufferStream& write(const T(&obj)[N]) {
 		if (this->bufferPos + sizeof(T) * N > this->bufferLen && !this->resize_buffer(this->bufferPos + sizeof(T) * N) && this->useExceptions) {
-			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
+			throw std::overflow_error{BUFFERSTREAM_OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
 		if constexpr (BufferStreamPODByteType<T>) {
@@ -317,7 +321,7 @@ public:
 	template<BufferStreamPODType T, std::uint64_t M, std::uint64_t N>
 	BufferStream& read(T(&obj)[M][N]) {
 		if (this->useExceptions && this->bufferPos + sizeof(T) * M * N > this->bufferLen) {
-			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+			throw std::overflow_error{BUFFERSTREAM_OVERFLOW_READ_ERROR_MESSAGE};
 		}
 
 		for (int i = 0; i < M; i++) {
@@ -336,7 +340,7 @@ public:
 	template<BufferStreamPODType T, std::uint64_t M, std::uint64_t N>
 	BufferStream& write(const T(&obj)[M][N]) {
 		if (this->bufferPos + sizeof(T) * M * N > this->bufferLen && !this->resize_buffer(this->bufferPos + sizeof(T) * M * N) && this->useExceptions) {
-			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
+			throw std::overflow_error{BUFFERSTREAM_OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
 		for (int i = 0; i < M; i++) {
@@ -355,7 +359,7 @@ public:
 	template<BufferStreamPODType T, std::uint64_t N>
 	BufferStream& read(std::array<T, N>& obj) {
 		if (this->useExceptions && this->bufferPos + sizeof(T) * N > this->bufferLen) {
-			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+			throw std::overflow_error{BUFFERSTREAM_OVERFLOW_READ_ERROR_MESSAGE};
 		}
 
 		if constexpr (BufferStreamPODByteType<T>) {
@@ -377,7 +381,7 @@ public:
 	template<BufferStreamPODType T, std::uint64_t N>
 	BufferStream& write(const std::array<T, N>& obj) {
 		if (this->bufferPos + sizeof(T) * N > this->bufferLen && !this->resize_buffer(this->bufferPos + sizeof(T) * N) && this->useExceptions) {
-			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
+			throw std::overflow_error{BUFFERSTREAM_OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
 		if constexpr (BufferStreamPODByteType<T>) {
@@ -399,7 +403,7 @@ public:
 	template<BufferStreamPossiblyNonContiguousResizableContainer T>
 	BufferStream& read(T& obj, std::uint64_t n) {
 		if (this->useExceptions && this->bufferPos + sizeof(typename T::value_type) * n > this->bufferLen) {
-			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+			throw std::overflow_error{BUFFERSTREAM_OVERFLOW_READ_ERROR_MESSAGE};
 		}
 
 		obj.clear();
@@ -434,7 +438,7 @@ public:
 	template<BufferStreamPossiblyNonContiguousResizableContainer T>
 	BufferStream& write(const T& obj) {
 		if (this->bufferPos + sizeof(typename T::value_type) * obj.size() > this->bufferLen && !this->resize_buffer(this->bufferPos + sizeof(typename T::value_type) * obj.size()) && this->useExceptions) {
-			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
+			throw std::overflow_error{BUFFERSTREAM_OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
 		if (!obj.size()) {
@@ -460,7 +464,7 @@ public:
 	template<BufferStreamPODType T>
 	BufferStream& read(T* obj, std::uint64_t n) {
 		if (this->useExceptions && this->bufferPos + sizeof(T) * n > this->bufferLen) {
-			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+			throw std::overflow_error{BUFFERSTREAM_OVERFLOW_READ_ERROR_MESSAGE};
 		}
 
 		if (!n) {
@@ -481,7 +485,7 @@ public:
 	template<BufferStreamPODType T>
 	BufferStream& write(const T* obj, std::uint64_t n) {
 		if (this->bufferPos + sizeof(T) * n > this->bufferLen && !this->resize_buffer(this->bufferPos + sizeof(T) * n) && this->useExceptions) {
-			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
+			throw std::overflow_error{BUFFERSTREAM_OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
 		if (!n) {
@@ -502,7 +506,7 @@ public:
 	template<BufferStreamPODType T>
 	BufferStream& read(std::span<T>& obj) {
 		if (this->useExceptions && this->bufferPos + sizeof(T) * obj.size() > this->bufferLen) {
-			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+			throw std::overflow_error{BUFFERSTREAM_OVERFLOW_READ_ERROR_MESSAGE};
 		}
 
 		if (obj.empty()) {
@@ -529,7 +533,7 @@ public:
 	template<BufferStreamPODType T>
 	BufferStream& read(std::span<T>& obj, std::uint64_t n) {
 		if (this->useExceptions && this->bufferPos + sizeof(T) * n > this->bufferLen) {
-			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+			throw std::overflow_error{BUFFERSTREAM_OVERFLOW_READ_ERROR_MESSAGE};
 		}
 
 		if (!n) {
@@ -555,7 +559,7 @@ public:
 	template<BufferStreamPODType T>
 	BufferStream& write(const std::span<T>& obj) {
 		if (this->bufferPos + sizeof(T) * obj.size() > this->bufferLen && !this->resize_buffer(this->bufferPos + sizeof(T) * obj.size()) && this->useExceptions) {
-			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
+			throw std::overflow_error{BUFFERSTREAM_OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
 		if (obj.empty()) {
@@ -604,7 +608,7 @@ public:
 			maxSize = obj.size() + addNullTerminator - bundledTerminator;
 		}
 		if (this->bufferPos + maxSize > this->bufferLen && !this->resize_buffer(this->bufferPos + maxSize) && this->useExceptions) {
-			throw std::overflow_error{OVERFLOW_WRITE_ERROR_MESSAGE};
+			throw std::overflow_error{BUFFERSTREAM_OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
 		for (std::uint64_t i = 0; i < maxSize; i++) {
@@ -631,7 +635,7 @@ public:
 
 	BufferStream& read(std::string& obj, std::uint64_t n, bool stopOnNullTerminator = true) {
 		if (this->useExceptions && this->bufferPos + sizeof(typename std::string::value_type) * n > this->bufferLen) {
-			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+			throw std::overflow_error{BUFFERSTREAM_OVERFLOW_READ_ERROR_MESSAGE};
 		}
 
 		obj.clear();
@@ -676,7 +680,7 @@ public:
 	template<BufferStreamPODType T>
 	[[nodiscard]] std::span<T> read_span(std::uint64_t n) {
 		if (this->useExceptions && this->bufferPos + sizeof(T) * n > this->bufferLen) {
-			throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+			throw std::overflow_error{BUFFERSTREAM_OVERFLOW_READ_ERROR_MESSAGE};
 		}
 
 		if (!n) {
@@ -715,17 +719,17 @@ public:
 		switch (offsetFrom) {
 			case std::ios::beg:
 				if (this->useExceptions && (std::cmp_greater(offset, this->bufferLen) || offset < 0)) {
-					throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+					throw std::overflow_error{BUFFERSTREAM_OVERFLOW_READ_ERROR_MESSAGE};
 				}
 				return this->buffer[offset];
 			case std::ios::cur:
 				if (this->useExceptions && (std::cmp_greater(this->bufferPos + offset, this->bufferLen) || this->bufferPos + offset < 0)) {
-					throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+					throw std::overflow_error{BUFFERSTREAM_OVERFLOW_READ_ERROR_MESSAGE};
 				}
 				return this->buffer[this->bufferPos + offset];
 			case std::ios::end:
 				if (this->useExceptions && (std::cmp_greater(offset, this->bufferLen) || offset <= 0)) {
-					throw std::overflow_error{OVERFLOW_READ_ERROR_MESSAGE};
+					throw std::overflow_error{BUFFERSTREAM_OVERFLOW_READ_ERROR_MESSAGE};
 				}
 				return this->buffer[this->bufferLen - offset];
 			default:
@@ -865,10 +869,6 @@ protected:
 	ResizeCallback bufferResizeCallback;
 	bool useExceptions;
 	bool bigEndian;
-
-	static constexpr auto OVERFLOW_READ_ERROR_MESSAGE = "Attempted to read value out of buffer bounds!";
-	static constexpr auto OVERFLOW_WRITE_ERROR_MESSAGE = "Attempted to write value out of buffer bounds!";
-	static constexpr auto BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE = "Cannot change endianness of complex types!";
 
 	[[nodiscard]] bool resize_buffer(std::uint64_t newLen) {
 		if (!this->bufferResizeCallback) {

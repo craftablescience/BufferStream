@@ -8,8 +8,8 @@
 /**
  * This class is provided for convenience, but use BufferStream if you can.
  * It has more features, like reading an object at a given location without
- * seeking, big-endian support, reading to a std::span, etc.
- * This class also has no tests because I was lazy.
+ * seeking, reading to a std::span, etc. This class also has no tests because
+ * I was lazy.
  */
 class FileStream {
 public:
@@ -21,7 +21,9 @@ public:
 		OPT_CREATE_IF_NONEXISTENT = 1 << 4,
 	};
 
-	explicit FileStream(const std::string& path, int options = OPT_READ) {
+	explicit FileStream(const std::string& path, int options = OPT_READ)
+			: useExceptions(true)
+			, bigEndian(false) {
 		if ((options & OPT_CREATE_IF_NONEXISTENT) && !std::filesystem::exists(path)) {
 			if (!std::filesystem::exists(std::filesystem::path{path}.parent_path())) {
 				std::error_code ec;
@@ -51,6 +53,24 @@ public:
 
 	[[nodiscard]] explicit operator bool() const {
 		return static_cast<bool>(this->file);
+	}
+
+	[[nodiscard]] bool are_exceptions_enabled() const {
+		return this->useExceptions;
+	}
+
+	FileStream& set_exceptions_enabled(bool exceptions) {
+		this->useExceptions = exceptions;
+		return *this;
+	}
+
+	[[nodiscard]] bool is_big_endian() const {
+		return this->bigEndian;
+	}
+
+	FileStream& set_big_endian(bool readBigEndian) {
+		this->bigEndian = readBigEndian;
+		return *this;
 	}
 
 	FileStream& seek_in(std::int64_t offset, std::ios::seekdir offsetFrom = std::ios::beg) {
@@ -125,6 +145,37 @@ public:
 	template<BufferStreamPODType T>
 	FileStream& read(T& obj) {
 		this->file.read(reinterpret_cast<char*>(&obj), sizeof(T));
+		if constexpr (sizeof(T) > 1) {
+			if constexpr (std::endian::native == std::endian::little) {
+				if (this->bigEndian) {
+					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
+						swap_endian(&obj);
+					} else if constexpr (std::is_enum_v<T>) {
+						swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&obj));
+					} else {
+						// Just don't swap the bytes...
+						if (this->useExceptions) {
+							throw std::invalid_argument{BUFFERSTREAM_BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
+						}
+					}
+				}
+			} else if constexpr (std::endian::native == std::endian::big) {
+				if (!this->bigEndian) {
+					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
+						swap_endian(&obj);
+					} else if constexpr (std::is_enum_v<T>) {
+						swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&obj));
+					} else {
+						// Just don't swap the bytes...
+						if (this->useExceptions) {
+							throw std::invalid_argument{BUFFERSTREAM_BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
+						}
+					}
+				}
+			} else {
+				static_assert("Need to investigate what the proper endianness of this platform is!");
+			}
+		}
 		return *this;
 	}
 
@@ -135,7 +186,47 @@ public:
 
 	template<BufferStreamPODType T>
 	FileStream& write(const T& obj) {
-		this->file.write(reinterpret_cast<const char*>(&obj), sizeof(T));
+		if constexpr (sizeof(T) > 1) {
+			if constexpr (std::endian::native == std::endian::little) {
+				if (this->bigEndian) {
+					T objCopy = obj;
+					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
+						swap_endian(&objCopy);
+					} else if constexpr (std::is_enum_v<T>) {
+						swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&objCopy));
+					} else {
+						// Just don't swap the bytes...
+						if (this->useExceptions) {
+							throw std::invalid_argument{BUFFERSTREAM_BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
+						}
+					}
+					this->file.write(reinterpret_cast<const char*>(&objCopy), sizeof(T));
+				} else {
+					this->file.write(reinterpret_cast<const char*>(&obj), sizeof(T));
+				}
+			} else if constexpr (std::endian::native == std::endian::big) {
+				if (!this->bigEndian) {
+					T objCopy = obj;
+					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
+						swap_endian(&objCopy);
+					} else if constexpr (std::is_enum_v<T>) {
+						swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&objCopy));
+					} else {
+						// Just don't swap the bytes...
+						if (this->useExceptions) {
+							throw std::invalid_argument{BUFFERSTREAM_BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
+						}
+					}
+					this->file.write(reinterpret_cast<const char*>(&objCopy), sizeof(T));
+				} else {
+					this->file.write(reinterpret_cast<const char*>(&obj), sizeof(T));
+				}
+			} else {
+				static_assert("Need to investigate what the proper endianness of this platform is!");
+			}
+		} else {
+			this->file.write(reinterpret_cast<const char*>(&obj), sizeof(T));
+		}
 		return *this;
 	}
 
@@ -146,8 +237,7 @@ public:
 
 	template<BufferStreamPODType T, std::uint64_t N>
 	FileStream& read(T(&obj)[N]) {
-		this->file.read(reinterpret_cast<char*>(&obj[0]), sizeof(T) * N);
-		return *this;
+		return this->read(&obj, N);
 	}
 
 	template<BufferStreamPODType T, std::uint64_t N>
@@ -157,7 +247,7 @@ public:
 
 	template<BufferStreamPODType T, std::uint64_t N>
 	FileStream& write(const T(&obj)[N]) {
-		this->file.write(reinterpret_cast<const char*>(&obj[0]), sizeof(T) * N);
+		this->write(&obj, N);
 		return *this;
 	}
 
@@ -198,8 +288,7 @@ public:
 
 	template<BufferStreamPODType T, std::uint64_t N>
 	FileStream& read(std::array<T, N>& obj) {
-		this->file.read(reinterpret_cast<char*>(obj.data()), sizeof(T) * N);
-		return *this;
+		return this->read(obj.data(), obj.size());
 	}
 
 	template<BufferStreamPODType T, std::uint64_t N>
@@ -209,8 +298,7 @@ public:
 
 	template<BufferStreamPODType T, std::uint64_t N>
 	FileStream& write(const std::array<T, N>& obj) {
-		this->file.write(reinterpret_cast<const char*>(obj.data()), sizeof(T) * N);
-		return *this;
+		return this->write(obj.data(), obj.size());
 	}
 
 	template<BufferStreamPODType T, std::uint64_t N>
@@ -225,7 +313,7 @@ public:
 			return *this;
 		}
 
-		if constexpr (BufferStreamResizableContiguousContainer<T>) {
+		if constexpr (BufferStreamPODByteType<typename T::value_type> && BufferStreamResizableContiguousContainer<T>) {
 			obj.resize(n);
 			this->file.read(reinterpret_cast<char*>(obj.data()), sizeof(typename T::value_type) * n);
 		} else {
@@ -255,7 +343,7 @@ public:
 		}
 
 		if constexpr (BufferStreamNonResizableContiguousContainer<T> || BufferStreamResizableContiguousContainer<T>) {
-			this->file.write(reinterpret_cast<const char*>(obj.data()), sizeof(typename T::value_type) * obj.size());
+			this->write(obj.data(), obj.size());
 		} else {
 			for (int i = 0; i < obj.size(); i++) {
 				this->write(obj[i]);
@@ -271,15 +359,102 @@ public:
 
 	template<BufferStreamPODType T>
 	FileStream& read(T* obj, std::uint64_t n) {
-		if (n) {
-			this->file.read(reinterpret_cast<char*>(obj), sizeof(T) * n);
+		if (!n) {
+			return *this;
+		}
+
+		this->file.read(reinterpret_cast<char*>(obj), sizeof(T) * n);
+		if constexpr (sizeof(T) > 1) {
+			if constexpr (std::endian::native == std::endian::little) {
+				if (this->bigEndian) {
+					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
+						for (std::uint64_t i = 0; i < n; i++) {
+							swap_endian(&obj[i]);
+						}
+					} else if constexpr (std::is_enum_v<T>) {
+						for (std::uint64_t i = 0; i < n; i++) {
+							swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&obj[i]));
+						}
+					} else {
+						// Just don't swap the bytes...
+						if (this->useExceptions) {
+							throw std::invalid_argument{BUFFERSTREAM_BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
+						}
+					}
+				}
+			} else if constexpr (std::endian::native == std::endian::big) {
+				if (!this->bigEndian) {
+					if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
+						for (std::uint64_t i = 0; i < n; i++) {
+							swap_endian(&obj[i]);
+						}
+					} else if constexpr (std::is_enum_v<T>) {
+						for (std::uint64_t i = 0; i < n; i++) {
+							swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&obj[i]));
+						}
+					} else {
+						// Just don't swap the bytes...
+						if (this->useExceptions) {
+							throw std::invalid_argument{BUFFERSTREAM_BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
+						}
+					}
+				}
+			} else {
+				static_assert("Need to investigate what the proper endianness of this platform is!");
+			}
 		}
 		return *this;
 	}
 
 	template<BufferStreamPODType T>
 	FileStream& write(const T* obj, std::uint64_t n) {
-		if (n) {
+		if (!n) {
+			return *this;
+		}
+
+		if constexpr (sizeof(T) > 1) {
+			if constexpr (std::endian::native == std::endian::little) {
+				if (this->bigEndian) {
+					for (std::uint64_t i = 0; i < n; i++) {
+						T objCopy = obj[i];
+						if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
+							swap_endian(&objCopy);
+						} else if constexpr (std::is_enum_v<T>) {
+							swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&objCopy));
+						} else {
+							// Just don't swap the bytes...
+							if (this->useExceptions) {
+								throw std::invalid_argument{BUFFERSTREAM_BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
+							}
+						}
+						this->file.write(reinterpret_cast<const char*>(&objCopy), sizeof(T));
+					}
+				} else {
+					this->file.write(reinterpret_cast<const char*>(obj), sizeof(T) * n);
+				}
+			} else if constexpr (std::endian::native == std::endian::big) {
+				if (!this->bigEndian) {
+					for (std::uint64_t i = 0; i < n; i++) {
+						T objCopy = obj[i];
+						if constexpr (std::is_integral_v<T> || std::floating_point<T>) {
+							swap_endian(&objCopy);
+						} else if constexpr (std::is_enum_v<T>) {
+							swap_endian(reinterpret_cast<std::underlying_type_t<T>*>(&objCopy));
+						} else {
+							// Just don't swap the bytes...
+							if (this->useExceptions) {
+								throw std::invalid_argument{BUFFERSTREAM_BIG_ENDIAN_POD_TYPE_ERROR_MESSAGE};
+							}
+						}
+						this->file.write(reinterpret_cast<const char*>(&objCopy), sizeof(T));
+					}
+				} else {
+					this->file.write(reinterpret_cast<const char*>(obj), sizeof(T) * n);
+				}
+			} else {
+				static_assert("Need to investigate what the proper endianness of this platform is!");
+			}
+		} else {
 			this->file.write(reinterpret_cast<const char*>(obj), sizeof(T) * n);
 		}
 		return *this;
@@ -287,10 +462,7 @@ public:
 
 	template<BufferStreamPODType T>
 	FileStream& write(const std::span<T>& obj) {
-		if (!obj.empty()) {
-			this->file.write(reinterpret_cast<const char*>(obj.data()), sizeof(T) * obj.size());
-		}
-		return *this;
+		return this->write(obj.data(), obj.size());
 	}
 
 	template<BufferStreamPODType T>
@@ -414,4 +586,6 @@ public:
 
 protected:
 	std::fstream file;
+	bool useExceptions;
+	bool bigEndian;
 };
