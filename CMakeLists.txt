@@ -27,11 +27,21 @@ if(BUFFERSTREAM_BUILD_TESTS)
     FetchContent_MakeAvailable(googletest)
     enable_testing()
 
+    set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
+
     add_executable(${BUFFERSTREAM_TEST_NAME}
             "${CMAKE_CURRENT_SOURCE_DIR}/test/BufferStream.cpp")
 
     target_link_libraries(${BUFFERSTREAM_TEST_NAME} PUBLIC
             gtest_main ${PROJECT_NAME})
+
+    if (MSVC)
+        target_compile_options(${BUFFERSTREAM_TEST_NAME} PRIVATE
+                /W4)
+    else()
+        target_compile_options(${BUFFERSTREAM_TEST_NAME} PRIVATE
+                -Wall -Wextra -Wpedantic)
+    endif()
 
     include(GoogleTest)
     gtest_discover_tests(${BUFFERSTREAM_TEST_NAME})

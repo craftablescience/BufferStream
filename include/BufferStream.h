@@ -128,7 +128,7 @@ public:
 				this->bufferPos = offset;
 				break;
 			case std::ios::cur:
-				if (this->useExceptions && (std::cmp_greater(this->bufferPos + offset, this->bufferLen) || this->bufferPos + offset < 0)) {
+				if (this->useExceptions && (std::cmp_greater(this->bufferPos + offset, this->bufferLen) || static_cast<int64_t>(this->bufferPos) + offset < 0)) {
 					throw std::overflow_error{BUFFERSTREAM_OVERFLOW_READ_ERROR_MESSAGE};
 				}
 				this->bufferPos += offset;
@@ -284,7 +284,7 @@ public:
 			std::memcpy(obj, this->buffer + this->bufferPos, N);
 			this->bufferPos += N;
 		} else {
-			for (int i = 0; i < N; i++) {
+			for (std::uint64_t i = 0; i < N; i++) {
 				this->read(obj[i]);
 			}
 		}
@@ -306,7 +306,7 @@ public:
 			std::memcpy(this->buffer + this->bufferPos, obj, N);
 			this->bufferPos += N;
 		} else {
-			for (int i = 0; i < N; i++) {
+			for (std::uint64_t i = 0; i < N; i++) {
 				this->write(obj[i]);
 			}
 		}
@@ -324,8 +324,8 @@ public:
 			throw std::overflow_error{BUFFERSTREAM_OVERFLOW_READ_ERROR_MESSAGE};
 		}
 
-		for (int i = 0; i < M; i++) {
-			for (int j = 0; j < N; j++) {
+		for (std::uint64_t i = 0; i < M; i++) {
+			for (std::uint64_t j = 0; j < N; j++) {
 				this->read(obj[i][j]);
 			}
 		}
@@ -343,8 +343,8 @@ public:
 			throw std::overflow_error{BUFFERSTREAM_OVERFLOW_WRITE_ERROR_MESSAGE};
 		}
 
-		for (int i = 0; i < M; i++) {
-			for (int j = 0; j < N; j++) {
+		for (std::uint64_t i = 0; i < M; i++) {
+			for (std::uint64_t j = 0; j < N; j++) {
 				this->write(obj[i][j]);
 			}
 		}
@@ -366,7 +366,7 @@ public:
 			std::memcpy(obj.data(), this->buffer + this->bufferPos, N);
 			this->bufferPos += N;
 		} else {
-			for (int i = 0; i < N; i++) {
+			for (std::uint64_t i = 0; i < N; i++) {
 				this->read(obj[i]);
 			}
 		}
@@ -388,7 +388,7 @@ public:
 			std::memcpy(this->buffer + this->bufferPos, obj.data(), N);
 			this->bufferPos += N;
 		} else {
-			for (int i = 0; i < N; i++) {
+			for (std::uint64_t i = 0; i < N; i++) {
 				this->write(obj[i]);
 			}
 		}
@@ -422,7 +422,7 @@ public:
 			}) {
 				obj.reserve(n);
 			}
-			for (int i = 0; i < n; i++) {
+			for (std::uint64_t i = 0; i < n; i++) {
 				obj.push_back(this->read<typename T::value_type>());
 			}
 		}
@@ -449,7 +449,7 @@ public:
 			std::memcpy(this->buffer + this->bufferPos, obj.data(), obj.size());
 			this->bufferPos += obj.size();
 		} else {
-			for (int i = 0; i < obj.size(); i++) {
+			for (decltype(obj.size()) i = 0; i < obj.size(); i++) {
 				this->write(obj[i]);
 			}
 		}
@@ -517,7 +517,7 @@ public:
 			std::memcpy(obj.data(), this->buffer + this->bufferPos, obj.size());
 			this->bufferPos += obj.size();
 		} else {
-			for (int i = 0; i < obj.size(); i++) {
+			for (decltype(obj.size()) i = 0; i < obj.size(); i++) {
 				obj[i] = this->read<T>();
 			}
 		}
@@ -548,7 +548,7 @@ public:
 				std::memcpy(obj.data(), this->buffer + this->bufferPos, n);
 				this->bufferPos += n;
 			} else {
-				for (int i = 0; i < n; i++) {
+				for (std::uint64_t i = 0; i < n; i++) {
 					obj[i] = this->read<T>();
 				}
 			}
@@ -570,7 +570,7 @@ public:
 			std::memcpy(this->buffer + this->bufferPos, obj.data(), obj.size());
 			this->bufferPos += obj.size();
 		} else {
-			for (int i = 0; i < obj.size(); i++) {
+			for (decltype(obj.size()) i = 0; i < obj.size(); i++) {
 				this->write(obj[i]);
 			}
 		}
@@ -644,7 +644,7 @@ public:
 		}
 
 		obj.reserve(n);
-		for (int i = 0; i < n; i++) {
+		for (std::uint64_t i = 0; i < n; i++) {
 			char temp = this->read<char>();
 			if (temp == '\0' && stopOnNullTerminator) {
 				// Read the required number of characters and exit
@@ -723,7 +723,7 @@ public:
 				}
 				return this->buffer[offset];
 			case std::ios::cur:
-				if (this->useExceptions && (std::cmp_greater(this->bufferPos + offset, this->bufferLen) || this->bufferPos + offset < 0)) {
+				if (this->useExceptions && (std::cmp_greater(this->bufferPos + offset, this->bufferLen) || static_cast<int64_t>(this->bufferPos) + offset < 0)) {
 					throw std::overflow_error{BUFFERSTREAM_OVERFLOW_READ_ERROR_MESSAGE};
 				}
 				return this->buffer[this->bufferPos + offset];
@@ -860,7 +860,7 @@ public:
 			dest.bytes[k] = source.bytes[sizeof(T) - k - 1];
 		}
 		*t = dest.t;
-	};
+	}
 
 protected:
 	std::byte* buffer;
