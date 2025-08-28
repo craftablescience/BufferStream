@@ -235,6 +235,14 @@ public:
 		return this->write(obj);
 	}
 
+	template<BufferStreamPODType T = std::byte>
+	FileStream& pad(std::uint64_t n) {
+		for (std::uint64_t i = 0; i < n * sizeof(T); i++) {
+			this->write<std::byte>({});
+		}
+		return *this;
+	}
+
 	template<BufferStreamPODType T, std::uint64_t N>
 	FileStream& read(T(&obj)[N]) {
 		return this->read(&obj, N);

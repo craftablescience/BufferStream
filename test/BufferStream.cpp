@@ -154,6 +154,22 @@ TEST(BufferStream, skip) {
 	EXPECT_EQ(stream.tell(), 3);
 }
 
+TEST(BufferStream, pad) {
+	std::vector<unsigned char> buffer;
+	BufferStream stream{buffer};
+
+	EXPECT_EQ(stream.tell(), 0);
+
+	stream.pad(1);
+	EXPECT_EQ(stream.tell(), 1);
+
+	stream.pad(2);
+	EXPECT_EQ(stream.tell(), 3);
+
+	stream.pad<std::int16_t>(1);
+	EXPECT_EQ(stream.tell(), 3 + sizeof(std::int16_t));
+}
+
 TEST(BufferStream, read_int_ref) {
 	{
 		int x = 10;
