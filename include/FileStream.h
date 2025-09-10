@@ -236,7 +236,7 @@ public:
 	}
 
 	template<BufferStreamPODType T = std::byte>
-	FileStream& pad(std::uint64_t n) {
+	FileStream& pad(std::uint64_t n = 1) {
 		for (std::uint64_t i = 0; i < n * sizeof(T); i++) {
 			this->write<std::byte>({});
 		}

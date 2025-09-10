@@ -160,13 +160,13 @@ TEST(BufferStream, pad) {
 
 	EXPECT_EQ(stream.tell(), 0);
 
-	stream.pad(1);
+	stream.pad();
 	EXPECT_EQ(stream.tell(), 1);
 
 	stream.pad(2);
 	EXPECT_EQ(stream.tell(), 3);
 
-	stream.pad<std::int16_t>(1);
+	stream.pad<std::int16_t>();
 	EXPECT_EQ(stream.tell(), 3 + sizeof(std::int16_t));
 }
 
