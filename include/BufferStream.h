@@ -695,7 +695,7 @@ public:
 			return {};
 		}
 
-		std::span<T> out{reinterpret_cast<T*>(this->buffer + this->bufferPos), n};
+		std::span<T> out{reinterpret_cast<T*>(this->buffer + this->bufferPos), static_cast<std::span<T>::size_type>(n)};
 		this->bufferPos += sizeof(T) * n;
 		return out;
 	}
