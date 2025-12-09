@@ -919,9 +919,17 @@ public:
 	explicit BufferStreamReadOnly(T(&buffer)[M][N])
 			: BufferStreamReadOnly(static_cast<const T*>(buffer), sizeof(T) * M * N) {}
 
+	template<BufferStreamNonResizableContiguousContainer T>
+	explicit BufferStreamReadOnly(T& buffer)
+			: BufferStreamReadOnly(const_cast<const typename T::value_type*>(buffer.data()), buffer.size() * sizeof(typename T::value_type)) {}
+
 	template<BufferStreamNonResizableContiguousContainerConst T>
 	explicit BufferStreamReadOnly(T& buffer)
 			: BufferStreamReadOnly(buffer.data(), buffer.size() * sizeof(typename T::value_type)) {}
+
+	template<BufferStreamResizableContiguousContainer T>
+	explicit BufferStreamReadOnly(T& buffer)
+			: BufferStreamReadOnly(const_cast<const typename T::value_type*>(buffer.data()), buffer.size() * sizeof(typename T::value_type)) {}
 
 	template<BufferStreamResizableContiguousContainerConst T>
 	explicit BufferStreamReadOnly(T& buffer)
