@@ -949,3 +949,11 @@ TEST(BufferStream, peek) {
 	EXPECT_EQ(stream.seek(1).peek(), std::byte{'e'});
 	EXPECT_EQ(stream.seek(2).peek<char>(), 'l');
 }
+
+TEST(BufferStream, peek_read_only) {
+	std::string_view buffer = "Hello";
+	BufferStreamReadOnly stream{buffer};
+
+	EXPECT_EQ(stream.seek(1).peek(), std::byte{'e'});
+	EXPECT_EQ(stream.seek(2).peek<char>(), 'l');
+}

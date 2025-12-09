@@ -41,11 +41,28 @@ concept BufferStreamNonResizableContiguousContainer = BufferStreamPossiblyNonCon
 	{t.resize(1)} -> std::same_as<void>;
 };
 
+/// STL const container types that can hold POD type values and be used as buffer storage.
+/// Guarantees T::data() is defined and T::resize(std::uint64_t) is NOT defined, on top of BufferStreamPossiblyNonContiguousContainer.
+template<typename T>
+concept BufferStreamNonResizableContiguousContainerConst = BufferStreamPossiblyNonContiguousContainer<T> && requires(T& t) {
+	{t.data()} -> std::same_as<const typename T::value_type*>;
+} && !requires(T& t) {
+	{t.resize(1)} -> std::same_as<void>;
+};
+
 /// STL container types that can hold POD type values, be used as buffer storage, and grow/shrink.
 /// Guarantees T::data() is defined and T::resize(std::uint64_t) is defined, on top of BufferStreamPossiblyNonContiguousContainer.
 template<typename T>
 concept BufferStreamResizableContiguousContainer = BufferStreamPossiblyNonContiguousContainer<T> && requires(T& t) {
 	{t.data()} -> std::same_as<typename T::value_type*>;
+	{t.resize(1)} -> std::same_as<void>;
+};
+
+/// STL const container types that can hold POD type values, be used as buffer storage, and grow/shrink.
+/// Guarantees T::data() is defined and T::resize(std::uint64_t) is defined, on top of BufferStreamPossiblyNonContiguousContainer.
+template<typename T>
+concept BufferStreamResizableContiguousContainerConst = BufferStreamPossiblyNonContiguousContainer<T> && requires(T& t) {
+	{t.data()} -> std::same_as<const typename T::value_type*>;
 	{t.resize(1)} -> std::same_as<void>;
 };
 
@@ -896,19 +913,19 @@ public:
 
 	template<BufferStreamPODType T, std::uint64_t N>
 	explicit BufferStreamReadOnly(T(&buffer)[N])
-			: BufferStreamReadOnly(const_cast<const T*>(buffer), sizeof(T) * N) {}
+			: BufferStreamReadOnly(static_cast<const T*>(buffer), sizeof(T) * N) {}
 
 	template<BufferStreamPODType T, std::uint64_t M, std::uint64_t N>
 	explicit BufferStreamReadOnly(T(&buffer)[M][N])
-			: BufferStreamReadOnly(const_cast<const T*>(buffer), sizeof(T) * M * N) {}
+			: BufferStreamReadOnly(static_cast<const T*>(buffer), sizeof(T) * M * N) {}
 
-	template<BufferStreamNonResizableContiguousContainer T>
+	template<BufferStreamNonResizableContiguousContainerConst T>
 	explicit BufferStreamReadOnly(T& buffer)
-			: BufferStreamReadOnly(const_cast<const typename T::value_type*>(buffer.data()), buffer.size() * sizeof(typename T::value_type)) {}
+			: BufferStreamReadOnly(buffer.data(), buffer.size() * sizeof(typename T::value_type)) {}
 
-	template<BufferStreamResizableContiguousContainer T>
+	template<BufferStreamResizableContiguousContainerConst T>
 	explicit BufferStreamReadOnly(T& buffer)
-			: BufferStreamReadOnly(const_cast<const typename T::value_type*>(buffer.data()), buffer.size() * sizeof(typename T::value_type)) {}
+			: BufferStreamReadOnly(buffer.data(), buffer.size() * sizeof(typename T::value_type)) {}
 
 private:
 	using BufferStream::write;
