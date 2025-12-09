@@ -21,16 +21,15 @@ public:
 		OPT_CREATE_IF_NONEXISTENT = 1 << 4,
 	};
 
-	explicit FileStream(const std::string& path, int options = OPT_READ)
+	explicit FileStream(const std::filesystem::path& path, int options = OPT_READ)
 			: useExceptions(true)
 			, bigEndian(false) {
-		if ((options & OPT_CREATE_IF_NONEXISTENT) && !std::filesystem::exists(path)) {
-			if (!std::filesystem::exists(std::filesystem::path{path}.parent_path())) {
-				std::error_code ec;
-				std::filesystem::create_directories(std::filesystem::path{path}.parent_path(), ec);
-				ec.clear();
+		std::error_code ec;
+		if (((options & OPT_CREATE_IF_NONEXISTENT) && !std::filesystem::exists(path, ec)) || ec) {
+			if (!std::filesystem::exists(path.parent_path(), ec)) {
+				std::filesystem::create_directories(path.parent_path(), ec);
 			}
-			std::ofstream create(path, std::ios::trunc);
+			std::ofstream create{path, std::ios::trunc};
 		}
 		std::ios::openmode openMode = std::ios::binary;
 		if (options & OPT_READ) {
