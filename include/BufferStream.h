@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <concepts>
@@ -14,6 +15,7 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include <version>
 
 /// Only POD types are directly readable from the stream.
 template<typename T>
@@ -876,15 +878,17 @@ public:
 
 	template<BufferStreamPODType T>
 	static constexpr void swap_endian(T* t) {
-		union {
-			T t;
-			std::byte bytes[sizeof(T)];
-		} source{}, dest{};
-		source.t = *t;
-		for (std::uint64_t k = 0; k < sizeof(T); k++) {
-			dest.bytes[k] = source.bytes[sizeof(T) - k - 1];
+#if defined(__cpp_lib_byteswap) && __cpp_lib_byteswap >= 202110L // C++23
+		if constexpr (std::integral<T> && std::has_unique_object_representations_v<T>) {
+			*t = std::byteswap(*t);
+		} else {
+#endif
+			auto bytes = std::bit_cast<std::array<std::byte, sizeof(T)>>(*t);
+			std::ranges::reverse(bytes);
+			*t = std::bit_cast<T>(bytes);
+#if defined(__cpp_lib_byteswap) && __cpp_lib_byteswap >= 202110L // C++23
 		}
-		*t = dest.t;
+#endif
 	}
 
 protected:
