@@ -69,7 +69,7 @@ concept BufferStreamResizableContiguousContainerConst = BufferStreamPossiblyNonC
 };
 
 /// STL container types that can hold POD type values but can't be used as buffer storage.
-/// Guarantees T::clear() and T::push_back(T::value_type) are defined, on top of BufferStreamNonContiguousContainer.
+/// Guarantees T::clear() and T::push_back(T::value_type) are defined, on top of BufferStreamPossiblyNonContiguousContainer.
 template<typename T>
 concept BufferStreamPossiblyNonContiguousResizableContainer = BufferStreamPossiblyNonContiguousContainer<T> && requires(T& t) {
 	{t.clear()} -> std::same_as<void>;
