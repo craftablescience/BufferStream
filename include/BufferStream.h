@@ -1,3 +1,7 @@
+// ReSharper disable CppDiscardedPostfixOperatorResult
+// ReSharper disable CppRedundantTypenameKeyword
+// ReSharper disable CppUnusedIncludeDirective
+
 #pragma once
 
 #include <algorithm>
@@ -178,7 +182,7 @@ public:
 
 	template<BufferStreamPODType T = std::byte>
 	BufferStream& skip_u(std::uint64_t n = 1) {
-		return this->skip(static_cast<std::int64_t>(n));
+		return this->skip<T>(static_cast<std::int64_t>(n));
 	}
 
 	[[nodiscard]] const std::byte* data() const {
@@ -626,7 +630,7 @@ public:
 	BufferStream& write(std::string_view obj, bool addNullTerminator = true, std::uint64_t maxSize = 0) {
 		static_assert(BufferStreamPODByteType<typename std::string_view::value_type>, "String char width must be 1 byte!");
 
-		bool bundledTerminator = !obj.empty() && obj[obj.size() - 1] == '\0';
+		const bool bundledTerminator = !obj.empty() && obj[obj.size() - 1] == '\0';
 		if (maxSize == 0) {
 			// Add true,  bundled true  - one null terminator
 			// Add false, bundled true  - null terminator removed
@@ -672,7 +676,7 @@ public:
 
 		obj.reserve(n);
 		for (std::uint64_t i = 0; i < n; i++) {
-			char temp = this->read<char>();
+			const auto temp = this->read<char>();
 			if (temp == '\0' && stopOnNullTerminator) {
 				// Read the required number of characters and exit
 				this->skip_u<char>(n - i - 1);
