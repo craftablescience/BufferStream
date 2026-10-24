@@ -1,3 +1,5 @@
+// ReSharper disable CppRedundantTypenameKeyword
+
 #pragma once
 
 #include <filesystem>
@@ -24,8 +26,7 @@ public:
 	explicit FileStream(const std::filesystem::path& path, int options = OPT_READ)
 			: useExceptions(true)
 			, bigEndian(false) {
-		std::error_code ec;
-		if (((options & OPT_CREATE_IF_NONEXISTENT) && !std::filesystem::exists(path, ec)) || ec) {
+		if (std::error_code ec; (options & OPT_CREATE_IF_NONEXISTENT && !std::filesystem::exists(path, ec)) || ec) {
 			if (!std::filesystem::exists(path.parent_path(), ec)) {
 				std::filesystem::create_directories(path.parent_path(), ec);
 			}
@@ -108,7 +109,7 @@ public:
 
 	template<BufferStreamPODType T = std::byte>
 	FileStream& skip_in_u(std::uint64_t n = 1) {
-		return this->skip_in(static_cast<std::int64_t>(n));
+		return this->skip_in<T>(static_cast<std::int64_t>(n));
 	}
 
 	template<BufferStreamPODType T = std::byte>
@@ -121,7 +122,7 @@ public:
 
 	template<BufferStreamPODType T = std::byte>
 	FileStream& skip_out_u(std::uint64_t n = 1) {
-		return this->skip_out(static_cast<std::int64_t>(n));
+		return this->skip_out<T>(static_cast<std::int64_t>(n));
 	}
 
 	[[nodiscard]] std::uint64_t tell_in() {
@@ -330,7 +331,7 @@ public:
 			}) {
 				obj.reserve(n);
 			}
-			for (int i = 0; i < n; i++) {
+			for (uint64_t i = 0; i < n; i++) {
 				obj.push_back(this->read<typename T::value_type>());
 			}
 		}
@@ -494,7 +495,7 @@ public:
 	FileStream& write(std::string_view obj, bool addNullTerminator = true, std::uint64_t maxSize = 0) {
 		static_assert(sizeof(typename std::string_view::value_type) == 1, "String char width must be 1 byte!");
 
-		bool bundledTerminator = !obj.empty() && obj[obj.size() - 1] == '\0';
+		const bool bundledTerminator = !obj.empty() && obj[obj.size() - 1] == '\0';
 		if (maxSize == 0) {
 			// Add true,  bundled true  - one null terminator
 			// Add false, bundled true  - null terminator removed
@@ -531,8 +532,8 @@ public:
 		}
 
 		obj.reserve(n);
-		for (int i = 0; i < n; i++) {
-			char temp = this->read<char>();
+		for (uint64_t i = 0; i < n; i++) {
+			const auto temp = this->read<char>();
 			if (temp == '\0' && stopOnNullTerminator) {
 				// Read the required number of characters and exit
 				this->skip_in_u<char>(n - i - 1);

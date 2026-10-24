@@ -4,7 +4,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Options
-option(BUFFERSTREAM_BUILD_TESTS "Build tests" OFF)
+option(BUFFERSTREAM_BUILD_TESTS "Build tests" ${PROJECT_IS_TOP_LEVEL})
 
 # Create library
 add_library(${PROJECT_NAME} INTERFACE
@@ -27,21 +27,21 @@ if(BUFFERSTREAM_BUILD_TESTS)
     FetchContent_MakeAvailable(googletest)
     enable_testing()
 
-    set(CMAKE_COMPILE_WARNING_AS_ERROR ON)
-
     add_executable(${BUFFERSTREAM_TEST_NAME}
             "${CMAKE_CURRENT_SOURCE_DIR}/test/BufferStream.cpp")
 
     target_link_libraries(${BUFFERSTREAM_TEST_NAME} PUBLIC
             gtest_main ${PROJECT_NAME})
 
-    if (MSVC)
-        target_compile_options(${BUFFERSTREAM_TEST_NAME} PRIVATE
-                /W4)
+    # Enable warnings, warnings are errors
+    if(MSVC)
+        target_compile_options(${BUFFERSTREAM_TEST_NAME} PRIVATE /W4 /WX)
     else()
-        target_compile_options(${BUFFERSTREAM_TEST_NAME} PRIVATE
-                -Wall -Wextra -Wpedantic)
+        target_compile_options(${BUFFERSTREAM_TEST_NAME} PRIVATE -Wall -Wextra -Wpedantic)
     endif()
+    set_target_properties(${BUFFERSTREAM_TEST_NAME} PROPERTIES
+            COMPILE_WARNING_AS_ERROR ON
+            LINK_WARNING_AS_ERROR ON)
 
     include(GoogleTest)
     gtest_discover_tests(${BUFFERSTREAM_TEST_NAME})

@@ -3,6 +3,7 @@
 #include <deque>
 
 #include <BufferStream.h>
+#include <FileStream.h>
 
 struct POD {
 	int x;
